@@ -1,7 +1,8 @@
 import streamlit as st
-from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
+import requests  # <--- NUEVO IMPORT AL PRINCIPIO
+from supabase import create_client, Client
 
 # 1. Configuración de Conexión (Protegida por Secrets)
 url = st.secrets["SUPABASE_URL"]
@@ -21,7 +22,14 @@ def login():
 if login():
     st.title("📊 Dashboard Bursátil IPSA-29")
     st.markdown("---")
-
+    # 2. Captura de la "Película" (Tiempo Real)
+    drivers = fetch_realtime_drivers()
+    if drivers:
+        st.sidebar.markdown("### 🕒 Drivers en Tiempo Real")
+        st.sidebar.metric("Dólar", f"${drivers['dolar']['value']}", f"{drivers['dolar']['variation']}%")
+        st.sidebar.metric("UF", f"${drivers['uf']['value']}")
+        # Agregamos el IPC para el análisis de inflación [3]
+        st.sidebar.metric("IPC", f"{drivers['ipc']['value']}%")
     # Recuperación de datos desde la Vista de Precios Ajustados
     # Esto asegura que la Memoria Analítica (comentarios) fluya al Dashboard
     try:
