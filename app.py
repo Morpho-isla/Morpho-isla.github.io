@@ -54,3 +54,12 @@ if login():
 
 else:
     st.warning("Por favor, inicie sesión en la barra lateral para visualizar los datos estratégicos.")
+    # --- SECCIÓN DE AUDITORÍA DE DATOS (IPSA-29) ---
+st.markdown("---")
+with st.expander("🔍 Ver Matriz Completa de Registros (Auditoría)"):
+    st.write(f"Mostrando registros para el activo seleccionado en la serie histórica")
+    # Mostramos el dataframe completo que ya descargamos en la app
+    st.dataframe(df.sort_values(by="fecha", ascending=False), use_container_width=True)
+    
+    if st.button("Actualizar Vista de Auditoría"):
+        st.rerun()
