@@ -1,15 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import requests  # <--- NUEVO IMPORT AL PRINCIPIO
+import requests  # Herramienta para conectar con las APIs de mercado [1]
 from supabase import create_client, Client
 
-# 1. Configuración de Conexión (Protegida por Secrets)
+# 1. Configuración de Conexión (Secrets)
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# 2. Función de Validación de Acceso
+# 2. DEFINICIÓN DE FUNCIONES (Deben ir primero)
+
 def login():
     st.sidebar.title("🔐 Acceso Analista Senior")
     user = st.sidebar.text_input("Usuario")
@@ -18,60 +19,57 @@ def login():
         return True
     return False
 
-# 3. Flujo Principal de la Aplicación
+def fetch_realtime_drivers():
+    """Captura indicadores desde la API de Boostr [1, 2]"""
+    try:
+        # Endpoint oficial para UF, Dólar e IPC en una sola consulta [2]
+        url = "https://api.boostr.cl/economy/indicators.json"
+        response = requests.get(url)
+        data = response.json()['data']
+        return data
+    except Exception:
+        return None
+
+# 3. CUERPO PRINCIPAL DE LA APP
 if login():
     st.title("📊 Dashboard Bursátil IPSA-29")
     st.markdown("---")
-    # 2. Captura de la "Película" (Tiempo Real)
+
+    # Ejecución de la captura en tiempo real (Línea 26 corregida)
     drivers = fetch_realtime_drivers()
+    
     if drivers:
         st.sidebar.markdown("### 🕒 Drivers en Tiempo Real")
+        # Visualización de indicadores dinámicos detectados en tu benchmark [3]
         st.sidebar.metric("Dólar", f"${drivers['dolar']['value']}", f"{drivers['dolar']['variation']}%")
         st.sidebar.metric("UF", f"${drivers['uf']['value']}")
-        # Agregamos el IPC para el análisis de inflación [3]
         st.sidebar.metric("IPC", f"{drivers['ipc']['value']}%")
-    # Recuperación de datos desde la Vista de Precios Ajustados
-    # Esto asegura que la Memoria Analítica (comentarios) fluya al Dashboard
+
+    # Recuperación de datos históricos desde Supabase
     try:
         response = supabase.table("vista_precios_ajustados").select("*").execute()
         df = pd.DataFrame(response.data)
         
         if not df.empty:
-            # Selector de Nemotécnico (Se actualizará dinámicamente según la carga)
+            # Selector de Nemotécnico para el análisis de los 29 constituyentes [4, 5]
             nemos = sorted(df['nemotecnico'].unique())
-            selected_nemo = st.selectbox("Seleccione Nemotécnico para Análisis:", nemos)
+            selected_nemo = st.selectbox("Seleccione Nemotécnico:", nemos)
 
-            # Filtrado de datos para el gráfico
+            # Filtrado y Gráfico
             df_filtered = df[df['nemotecnico'] == selected_nemo].sort_values(by="fecha")
-
-            # --- SERIE DE TIEMPO ---
             st.subheader(f"Serie de Tiempo: {selected_nemo}")
             fig = px.line(df_filtered, x='fecha', y=['precio_mercado', 'precio_ajustado'],
-                          title="Evolución de Precio (Ajuste por Variaciones de Capital)",
-                          labels={'value': 'Precio (CLP)', 'fecha': 'Jornada Bursátil'})
+                          title="Evolución de Precio con Ajuste OSAs")
             st.plotly_chart(fig, use_container_width=True)
 
-            # --- MEMORIA ANALÍTICA (INSIGHTS) ---
-            st.info("💡 Insight del Analista Senior para la última jornada:")
-            last_comment = df_filtered.iloc[-1]['comentario']
-            if pd.isna(last_comment) or last_comment == "":
-                st.write("*Sin comentarios registrados para esta fecha.*")
-            else:
-                st.write(last_comment)
-
-            # --- SECCIÓN DE AUDITORÍA DE DATOS (IPSA-29) ---
-            st.markdown("---")
+            # Sección de Auditoría (Matriz Completa IPSA-29)
             with st.expander("🔍 Ver Matriz Completa de Registros (Auditoría)"):
-                st.write("Mostrando registros históricos (Ordenados por fecha descendente)")
-                # Aquí se soluciona el NameError al estar dentro del bloque df
                 st.dataframe(df.sort_values(by="fecha", ascending=False), use_container_width=True)
         else:
-            st.error("No se encontraron datos en la base de datos de Supabase.")
+            st.error("Base de datos vacía. Requiere carga de jornada.")
 
     except Exception as e:
-        st.error(f"Error técnico en la conexión: {e}")
+        st.error(f"Error en conexión Supabase: {e}")
 
 else:
-    # Pantalla de bienvenida previa al login
-    st.warning("Por favor, inicie sesión en la barra lateral para visualizar la matriz de datos estratégicos.")
     st.info("Sistema blindado bajo el Protocolo de Integridad IPSA-29.")
