@@ -56,8 +56,6 @@ if login():
     elif menu == "📖 El Libro (Histórico)":
         st.title("📖 Memoria Estratégica y Ajustes")
         st.info("Consulta de integridad histórica y ajuste por eventos corporativos (OSAs).")
-
-        
     elif menu == "🛡️ Perfil de Riesgo":
         st.title("🛡️ Evaluación de Solvencia")
         st.write("Módulo para integración con **Floid** para deudas CMF.")
