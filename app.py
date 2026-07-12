@@ -56,6 +56,45 @@ if login():
     elif menu == "📖 El Libro (Histórico)":
         st.title("📖 Memoria Estratégica y Ajustes")
         st.info("Consulta de integridad histórica y ajuste por eventos corporativos (OSAs).")
+
+        try:
+            # 1. Carga de datos desde la Vista de Integridad
+            response = supabase.table("vista_precios_ajustados").select("*").execute()
+            df = pd.DataFrame(response.data)
+            
+            if not df.empty:
+                nemos = sorted(df['nemotecnico'].unique())
+                
+                # --- GRÁFICO 1: INTEGRIDAD (Arriba) ---
+                st.subheader("🛠️ Auditoría de Precio Ajustado")
+                selected_nemo = st.selectbox("Seleccione Acción para validar ajuste:", nemos)
+                df_filtered = df[df['nemotecnico'] == selected_nemo].sort_values(by="fecha")
+                
+                fig_adj = px.line(df_filtered, x='fecha', y=['precio_mercado', 'precio_ajustado'],
+                                  title=f"Serie Continua: {selected_nemo}")
+                st.plotly_chart(fig_adj, use_container_width=True)
+
+                # --- GRÁFICO 2: CORRELACIÓN (Abajo) ---
+                st.markdown("---")
+                st.subheader("🔗 Radar de Drivers (IPER)")
+                col_c1, col_c2 = st.columns(2)
+                with col_c1:
+                    nemo_corr = st.selectbox("Acción Base:", nemos, key="c_base")
+                with col_c2:
+                    driver_opt = st.selectbox("Commodity Driver:", ["Cobre", "Litio", "Hierro", "WTI"], key="c_driver")
+                
+                st.write(f"Comparando flujo de **{nemo_corr}** vs fundamental de **{driver_opt}**")
+                # Placeholder del gráfico dual (usamos df_filtered por ahora)
+                fig_dual = px.line(df_filtered, x='fecha', y='precio_ajustado', 
+                                   title=f"Divergencia Estratégica: {nemo_corr} vs {driver_opt}")
+                st.plotly_chart(fig_dual, use_container_width=True)
+
+            else:
+                st.warning("La base de datos está esperando el PVI de la jornada.")
+
+        except Exception as e:
+            st.error(f"Error al conectar con el 'Libro': {e}")
+        
     elif menu == "🛡️ Perfil de Riesgo":
         st.title("🛡️ Evaluación de Solvencia")
         st.write("Módulo para integración con **Floid** para deudas CMF.")
