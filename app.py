@@ -17,7 +17,56 @@ def login():
     if user == st.secrets["APP_USER"] and password == st.secrets["APP_PASSWORD"]:
         return True
     return False
+# 1. DEFINICIÓN DE FUNCIONES ESTRATÉGICAS
+def fetch_realtime_drivers():
+    """Captura de la 'Película' en tiempo real (API Boostr)"""
+    try:
+        url = "https://api.boostr.cl/economy/indicators.json"
+        response = requests.get(url)
+        return response.json()['data']
+    except Exception: return None
 
+# 2. ACCESO Y NAVEGACIÓN
+if login(): # Asumimos la función login definida arriba
+    st.sidebar.title("🗂️ Terminal IPSA-29")
+    
+    # Menú de Navegación Basado en Flujo vs Stock
+    menu = st.sidebar.radio("Módulos:", [
+        "📺 La Película (Real-Time)", 
+        "📖 El Libro (Histórico)", 
+        "🛡️ Perfil de Riesgo",
+        "⚙️ El Motor (Admin)"
+    ])
+
+    # --- INDICADORES TRANSVERSALES ---
+    drivers = fetch_realtime_drivers()
+    if drivers:
+        st.sidebar.markdown("---")
+        st.sidebar.metric("Dólar", f"${drivers.get('dolar', {}).get('value')}")
+        st.sidebar.metric("UF", f"${drivers.get('uf', {}).get('value')}")
+
+    # 3. LÓGICA DE MÓDULOS
+    if menu == "📺 La Película (Real-Time)":
+        st.title("📺 Flujo de Mercado en Vivo")
+        st.info("Monitoreo dinámico de los 29 constituyentes y drivers monetarios [Boostr].")
+        # Aquí va la tabla de precios del día (Condición 'T' vs 'N') [4]
+
+    elif menu == "📖 El Libro (Histórico)":
+        st.title("📖 Memoria Estratégica y Ajustes")
+        # Aquí van tus dos gráficos:
+        # 1. El de Integridad (Precio Ajustado OSAs) [5]
+        # 2. El Dual (Correlación con IPER: Cobre, Litio, Hierro) [6]
+
+    elif menu == "🛡️ Perfil de Riesgo":
+        st.title("🛡️ Evaluación de Solvencia Institucional")
+        st.write("Integración vía **Floid** para el Certificado de Deudas CMF [1, 2].")
+        st.warning("Este módulo permite auditar la salud financiera de emisores como Masisa.")
+
+    elif menu == "⚙️ El Motor (Admin)":
+        st.title("⚙️ Gestión de la Base de Datos")
+        if st.button("Lanzar Backfill Drivers 2026"):
+            # Aquí activaremos el script independiente que conversamos
+            st.success("Sincronizando históricos de UF y Dólar...")
 def fetch_realtime_drivers():
     try:
         url = "https://api.boostr.cl/economy/indicators.json"
