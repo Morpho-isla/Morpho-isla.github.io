@@ -40,11 +40,20 @@ if login():
     
     if drivers:
         st.sidebar.markdown("### 🕒 Drivers en Tiempo Real")
-        # Visualización de indicadores dinámicos detectados en tu benchmark [3]
-        st.sidebar.metric("Dólar", f"${drivers['dolar']['value']}", f"{drivers['dolar']['variation']}%")
-        st.sidebar.metric("UF", f"${drivers['uf']['value']}")
-        st.sidebar.metric("IPC", f"{drivers['ipc']['value']}%")
-
+        
+        # Extraemos los valores de forma segura
+        val_dolar = drivers.get('dolar', {}).get('value', 'N/D')
+        var_dolar = drivers.get('dolar', {}).get('variation') # Puede ser None
+        
+        # Mostramos la métrica: si var_dolar existe, se muestra como delta
+        st.sidebar.metric(
+            label="Dólar", 
+            value=f"${val_dolar}", 
+            delta=f"{var_dolar}%" if var_dolar else None
+        )
+        
+        st.sidebar.metric("UF", f"${drivers.get('uf', {}).get('value', 'N/D')}")
+        st.sidebar.metric("IPC", f"{drivers.get('ipc', {}).get('value', 'N/D')}%")
     # Recuperación de datos históricos desde Supabase
     try:
         response = supabase.table("vista_precios_ajustados").select("*").execute()
