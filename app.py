@@ -67,15 +67,6 @@ if login(): # Asumimos la función login definida arriba
         if st.button("Lanzar Backfill Drivers 2026"):
             # Aquí activaremos el script independiente que conversamos
             st.success("Sincronizando históricos de UF y Dólar...")
-def fetch_realtime_drivers():
-    try:
-        url = "https://api.boostr.cl/economy/indicators.json"
-        response = requests.get(url)
-        data = response.json()['data']
-        return data
-    except Exception:
-        return None
-
 # 3. CUERPO PRINCIPAL DE LA APP
 if login():
     st.title("📊 Dashboard Bursátil IPSA-29")
