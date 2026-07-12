@@ -54,6 +54,31 @@ if login():
         
         st.sidebar.metric("UF", f"${drivers.get('uf', {}).get('value', 'N/D')}")
         st.sidebar.metric("IPC", f"{drivers.get('ipc', {}).get('value', 'N/D')}%")
+    # --- NUEVA SECCIÓN: ANÁLISIS DE CORRELACIÓN ---
+            st.markdown("---")
+            st.subheader("🔗 Análisis de Correlación: Acción vs Commodity")
+            st.info("Esta sección permite contrastar el flujo de la acción con los Drivers Maetros del IPER.")
+
+            # 1. Selectores de comparación
+            col_corr1, col_corr2 = st.columns(2)
+            with col_corr1:
+                # Reutilizamos los nemos de los 29 constituyentes
+                nemo_base = st.selectbox("Seleccione Acción IPSA-29:", nemos, key="corr_ipsa")
+            with col_corr2:
+                # Drivers definidos en nuestro Mapa de Drivers (IPER/Cochilco)
+                commodity_driver = st.selectbox("Agregar Commodity Driver:", 
+                                               ["Hierro", "Cobre", "Litio", "Oro", "WTI", "Dólar"])
+
+            # 2. Lógica de visualización Dual (Película de Datos)
+            # Nota: Esto asume que cargaremos los históricos de commodities en 'drivers_mercado'
+            st.write(f"Comparando trayectoria de **{nemo_base}** vs **{commodity_driver}**")
+            
+            # Generamos un gráfico placeholder con los datos que ya tenemos (ajustados)
+            fig_dual = px.line(df_filtered, x='fecha', y='precio_ajustado', 
+                               title=f"Correlación: {nemo_base} vs {commodity_driver}")
+            
+            # (En la sesión nocturna configuraremos el doble eje Y para los commodities)
+            st.plotly_chart(fig_dual, use_container_width=True)
     # Recuperación de datos históricos desde Supabase
     try:
         response = supabase.table("vista_precios_ajustados").select("*").execute()
