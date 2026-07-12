@@ -4,33 +4,33 @@ import plotly.express as px
 import requests
 from supabase import create_client, Client
 
-# 1. Configuración de Conexión (Secrets)
+# 1. CONFIGURACIÓN (Secrets)
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# 2. DEFINICIÓN DE FUNCIONES
+# 2. DEFINICIÓN DE FUNCIONES (Agrupadas al principio)
 def login():
     st.sidebar.title("🔐 Acceso Analista Senior")
-    user = st.sidebar.text_input("Usuario")
+    # Este es el widget que estaba duplicado
+    user = st.sidebar.text_input("Usuario") 
     password = st.sidebar.text_input("Contraseña", type="password")
     if user == st.secrets["APP_USER"] and password == st.secrets["APP_PASSWORD"]:
         return True
     return False
-# 1. DEFINICIÓN DE FUNCIONES ESTRATÉGICAS
+
 def fetch_realtime_drivers():
-    """Captura de la 'Película' en tiempo real (API Boostr)"""
     try:
         url = "https://api.boostr.cl/economy/indicators.json"
         response = requests.get(url)
-        return response.json()['data']
+        return response.json().get('data')
     except Exception: return None
 
-# 2. ACCESO Y NAVEGACIÓN
-if login(): # Asumimos la función login definida arriba
+# 3. CUERPO ÚNICO DE LA APP (Elimina cualquier otro 'if login' previo)
+if login():
     st.sidebar.title("🗂️ Terminal IPSA-29")
     
-    # Menú de Navegación Basado en Flujo vs Stock
+    # Menú de Navegación consolidado
     menu = st.sidebar.radio("Módulos:", [
         "📺 La Película (Real-Time)", 
         "📖 El Libro (Histórico)", 
@@ -38,24 +38,25 @@ if login(): # Asumimos la función login definida arriba
         "⚙️ El Motor (Admin)"
     ])
 
-    # --- INDICADORES TRANSVERSALES ---
+    # Drivers en la barra lateral (Usando .get para evitar KeyErrors)
     drivers = fetch_realtime_drivers()
     if drivers:
         st.sidebar.markdown("---")
-        st.sidebar.metric("Dólar", f"${drivers.get('dolar', {}).get('value')}")
-        st.sidebar.metric("UF", f"${drivers.get('uf', {}).get('value')}")
+        val_dolar = drivers.get('dolar', {}).get('value', 'N/D')
+        st.sidebar.metric("Dólar", f"${val_dolar}")
+        val_uf = drivers.get('uf', {}).get('value', 'N/D')
+        st.sidebar.metric("UF", f"${val_uf}")
 
-    # 3. LÓGICA DE MÓDULOS
+    # Lógica de los Módulos
     if menu == "📺 La Película (Real-Time)":
         st.title("📺 Flujo de Mercado en Vivo")
-        st.info("Monitoreo dinámico de los 29 constituyentes y drivers monetarios [Boostr].")
-        # Aquí va la tabla de precios del día (Condición 'T' vs 'N') [4]
-
+        # (Aquí va tu código de visualización de jornada)
+        
     elif menu == "📖 El Libro (Histórico)":
         st.title("📖 Memoria Estratégica y Ajustes")
-        # Aquí van tus dos gráficos:
-        # 1. El de Integridad (Precio Ajustado OSAs) [5]
-        # 2. El Dual (Correlación con IPER: Cobre, Litio, Hierro) [6]
+        # (Aquí van tus gráficos de Precios Ajustados y Correlación IPER)
+
+    # ... (Resto de los módulos igual) ...
 
     elif menu == "🛡️ Perfil de Riesgo":
         st.title("🛡️ Evaluación de Solvencia Institucional")
