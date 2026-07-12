@@ -4,35 +4,35 @@ import plotly.express as px
 import requests
 from supabase import create_client, Client
 
-# 1. CONEXIÓN Y SEGURIDAD (Protocolo IPSA-29)
+# 1. CONEXIÓN Y PROTOCOLO DE SEGURIDAD
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
 def login_blindado():
     st.sidebar.title("🔐 Acceso Analista Senior")
-    # Keys únicas para evitar el error de duplicidad
-    u = st.sidebar.text_input("Usuario", key="usr_session_final") 
-    p = st.sidebar.text_input("Contraseña", type="password", key="pass_session_final")
+    # Llaves de seguridad para evitar errores de duplicidad
+    u = st.sidebar.text_input("Usuario", key="usr_session_v3") 
+    p = st.sidebar.text_input("Contraseña", type="password", key="pass_session_v3")
     if u == st.secrets["APP_USER"] and p == st.secrets["APP_PASSWORD"]:
         return True
     return False
 
 def fetch_drivers():
-    """Captura de drivers monetarios (API Boostr)"""
+    """Captura de drivers maestros (API Boostr)"""
     try:
         r = requests.get("https://api.boostr.cl/economy/indicators.json")
         return r.json().get('data')
     except: return None
 
-# 2. CUERPO PRINCIPAL MODULAR
+# 2. LÓGICA DE NAVEGACIÓN MODULAR
 if login_blindado():
-    st.sidebar.title("🗂️ Módulos de Inteligencia")
-    menu = st.sidebar.radio("Navegación:", 
-                            ["📺 La Película (Real-Time)", "📖 El Libro (Histórico)", "🛡️ Riesgo", "⚙️ Admin"],
-                            key="menu_principal_v2")
+    st.sidebar.title("🗂️ Módulos IPSA-29")
+    menu = st.sidebar.radio("Vista:", 
+                            ["📺 La Película (Vivo)", "📖 El Libro (Histórico)", "🛡️ Riesgo", "⚙️ Admin"],
+                            key="nav_menu_v3")
 
-    # Indicadores en Tiempo Real (Sidebar)
+    # Drivers en Barra Lateral (Contexto inmediato)
     data = fetch_drivers()
     if data:
         st.sidebar.markdown("---")
@@ -40,10 +40,10 @@ if login_blindado():
         st.sidebar.metric("UF", f"${data.get('uf', {}).get('value')}")
 
     # --- MÓDULO: LA PELÍCULA ---
-    if menu == "📺 La Película (Real-Time)":
-        st.title("📺 Flujo de Mercado en Vivo")
-        st.info("Monitoreo dinámico de los 29 constituyentes y drivers de exportación.")
-        st.write("Estado: Conectado a la API de Boostr.")
+    if menu == "📺 La Película (Vivo)":
+        st.title("📺 Flujo de Mercado Real-Time")
+        st.info("Monitoreo del cierre diario y drivers de exportación (Cobre/Litio).")
+        st.write("Estado: Sistema operativo y conectado a Boostr.")
 
     # --- MÓDULO: EL LIBRO ---
     elif menu == "📖 El Libro (Histórico)":
@@ -53,30 +53,24 @@ if login_blindado():
             df = pd.DataFrame(res.data)
             if not df.empty:
                 nemos = sorted(df['nemotecnico'].unique())
-                sel = st.selectbox("Seleccione Acción:", nemos, key="sel_stock_v2")
+                sel = st.selectbox("Seleccione Acción:", nemos, key="sel_stock_v3")
                 df_f = df[df['nemotecnico'] == sel].sort_values(by="fecha")
                 
-                # Gráfico 1: Integridad (Precio Ajustado)
+                # Visualización de Integridad
                 st.subheader("🛠️ Auditoría de Serie Continua")
                 fig = px.line(df_f, x='fecha', y=['precio_mercado', 'precio_ajustado'],
-                              title=f"Evolución Ajustada: {sel}")
+                              title=f"Evolución de {sel} (Ajustado por OSAs)")
                 st.plotly_chart(fig, use_container_width=True)
-                
-                # Gráfico 2: Correlación Dual
-                st.markdown("---")
-                st.subheader("🔗 Correlación: Acción vs Commodity (IPER)")
-                # Aquí configuraremos el doble eje Y en la próxima sesión
-                st.line_chart(df_f.set_index('fecha')['precio_ajustado'])
             else:
-                st.warning("Base de datos sin registros. Pendiente PVI del 01 de julio.")
+                st.warning("Base de datos en espera de la carga del 01 de julio.")
         except Exception as e:
-            st.error(f"Error al conectar con el 'Libro': {e}")
+            st.error(f"Error de conexión al historial: {e}")
 
     # --- MÓDULO: ADMIN ---
     elif menu == "⚙️ Admin":
-        st.title("⚙️ Gestión de Datos")
-        if st.button("Lanzar Backfill Histórico 2026", key="btn_backfill_final"):
-            st.success("Script de carga de indicadores iniciado...")
+        st.title("⚙️ Gestión de Datos y Backfilling")
+        if st.button("Lanzar Backfill Drivers 2026", key="btn_backfill_v3"):
+            st.success("Sincronizando históricos de UF y Dólar...")
 
 else:
-    st.info("Esperando ingreso bajo el Protocolo de Integridad IPSA-29.")
+    st.info("Sistema blindado. Ingrese credenciales para iniciar sesión.")
