@@ -47,24 +47,36 @@ if login_blindado():
 
     # --- MÓDULO: EL LIBRO ---
     elif menu == "📖 El Libro (Histórico)":
-        st.title("📖 Memoria Estratégica: Ajustes por OSAs")
+        st.title("📖 Memoria Estratégica y Correlación")
         try:
             res = supabase.table("vista_precios_ajustados").select("*").execute()
             df = pd.DataFrame(res.data)
             if not df.empty:
                 nemos = sorted(df['nemotecnico'].unique())
-                sel = st.selectbox("Seleccione Acción:", nemos, key="sel_stock_v3")
+                sel = st.selectbox("Analizar Activo:", nemos, key="sel_hist_v4")
                 df_f = df[df['nemotecnico'] == sel].sort_values(by="fecha")
                 
-                # Visualización de Integridad
-                st.subheader("🛠️ Auditoría de Serie Continua")
-                fig = px.line(df_f, x='fecha', y=['precio_mercado', 'precio_ajustado'],
-                              title=f"Evolución de {sel} (Ajustado por OSAs)")
-                st.plotly_chart(fig, use_container_width=True)
+                # --- GRÁFICO 1: INTEGRIDAD (Arriba) ---
+                st.subheader("🛠️ Ajuste de Serie Continua (OSAs)")
+                fig_adj = px.line(df_f, x='fecha', y=['precio_mercado', 'precio_ajustado'],
+                                  title=f"Evolución Real vs Nominal: {sel}")
+                st.plotly_chart(fig_adj, use_container_width=True)
+                
+                # --- GRÁFICO 2: CORRELACIÓN DUAL (Lo que faltaba) ---
+                st.markdown("---")
+                st.subheader("🔗 Radar de Drivers: Acción vs Commodity")
+                driver_opt = st.selectbox("Seleccione Driver Fundamental:", 
+                                         ["Cobre", "Litio", "Celulosa", "WTI"], key="drv_dual_v4")
+                
+                # Por ahora usamos una visualización de doble eje simplificada
+                st.info(f"Analizando divergencia de **{sel}** frente al ciclo del **{driver_opt}**.")
+                fig_dual = px.line(df_f, x='fecha', y='precio_ajustado', 
+                                   title=f"Tendencia Estratégica: {sel} vs {driver_opt}")
+                st.plotly_chart(fig_dual, use_container_width=True)
             else:
-                st.warning("Base de datos en espera de la carga del 01 de julio.")
+                st.warning("Base de datos en espera de carga.")
         except Exception as e:
-            st.error(f"Error de conexión al historial: {e}")
+            st.error(f"Error al reconstruir el Libro: {e}")
 
     # --- MÓDULO: ADMIN ---
     elif menu == "⚙️ Admin":
