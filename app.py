@@ -99,7 +99,7 @@ elif menu == "⚙️ Admin & Backfill":
         st.warning("Ejecutando Protocolo de 7 Pasos para sincronización de integridad...")
 if login():
     # 3. FICHA RESUMEN: CABECERA TÁCTICA (Datos de Boostr/Cierres) [2-4]
-    # st.write("### 🚀 TACTICAL INTELLIGENCE DASHBOARD | YTD: -17,05%")
+    st.write("### 🚀 TACTICAL INTELLIGENCE DASHBOARD | YTD: -17,05%")
     
     # Aquí puedes conectar fetch_realtime_drivers() de Boostr que definimos antes [2]
     c1, c2, c3, c4 = st.columns(4)
