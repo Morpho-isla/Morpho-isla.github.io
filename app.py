@@ -96,7 +96,7 @@ elif menu == "🛡️ Riesgo & EEFF":
 elif menu == "⚙️ Admin & Backfill":
     st.write("### ⚙️ PANEL DE ADMINISTRACIÓN")
     if st.button("🚀 Lanzar Backfill Histórico 2026"):
-        st.warning("Ejecutando Protocolo de 7 Pasos para sincronización
+        st.warning("Ejecutando Protocolo de 7 Pasos para sincronización de integridad...")
 if login():
     # 3. FICHA RESUMEN: CABECERA TÁCTICA (Datos de Boostr/Cierres) [2-4]
     # st.write("### 🚀 TACTICAL INTELLIGENCE DASHBOARD | YTD: -17,05%")
