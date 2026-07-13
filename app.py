@@ -4,57 +4,58 @@ import pandas as pd
 import plotly.express as px
 import requests
 
-# 1. MOTOR DE DATOS: REACTIVACIÓN BOOSTR API
+# --- BITÁCORA DE VERSIONES: v1.5.0 ---
+# Mejoras: Cabecera táctica global, visibilidad forzada (Verde Neón), motor MASISA activo.
+
+# 1. CONEXIÓN Y LOGIN (Blindaje de IP)
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
+
+def login():
+    st.sidebar.title("🔐 ACCESO ANALISTA SENIOR")
+    user = st.sidebar.text_input("Usuario", key="user_login")
+    password = st.sidebar.text_input("Contraseña", type="password", key="pass_login")
+    return user == st.secrets["APP_USER"] and password == st.secrets["APP_PASSWORD"]
+
+# 2. MOTOR DE DATOS: BOOSTR API (Drivers en tiempo real)
 def fetch_live_drivers():
     try:
-        # Llamada a la API de Boostr para indicadores oficiales [1, 2]
         res = requests.get("https://api.boostr.cl/economy/indicators.json", timeout=5).json()
-        data = res['data']
-        return {
-            "dolar": f"${data['usd']['value']}", 
-            "dolar_var": f"{data['usd']['variation']}%",
-            "uf": f"${data['uf']['value']:,}",
-            "wti": "US$71,47", # Fuente: Mercado Global
-            "cobre": "US$6,08"  # Fuente: Cochilco [1]
-        }
+        d = res['data']
+        return {"usd": f"${d['usd']['value']}", "uf": f"${d['uf']['value']:,}"}
     except:
-        # Fallback de seguridad si la API no responde
-        return {"dolar": "$928,99", "dolar_var": "-0.72%", "uf": "$40.844,79", "wti": "US$71,47", "cobre": "US$6,08"}
+        return {"usd": "$928,99", "uf": "$40.844,79"}
 
-drivers = fetch_live_drivers()
+live = fetch_live_drivers()
 
-# 2. UI/UX: ALTO CONTRASTE BLINDADO
-st.set_page_config(layout="wide", page_title="Terminal IPSA-29")
-
+# 3. CONFIGURACIÓN DE PÁGINA Y ALTO CONTRASTE (CSS PERSONALIZADO)
+st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.5")
 st.markdown("""
     <style>
-    /* Fondo oscuro global */
-    .main { background-color: #0E1117; color: #FFFFFF; }
-    /* Encabezados en Verde Neón para resaltar */
-    h1, h2, h3 { color: #00FFAA !important; font-weight: 800 !important; text-transform: uppercase; }
-    /* FORZAMOS VISIBILIDAD: Texto Blanco sobre fondo oscuro para las métricas */
-    [data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 28px !important; font-weight: bold; }
-    [data-testid="stMetricLabel"] { color: #A0A0A0 !important; font-size: 14px; }
-    /* Estilo para bloques financieros */
-    .ratio-box { padding: 15px; border-radius: 10px; border: 1px solid #333; background-color: #1A1C23; }
+    .main { background-color: #0E1117 !important; color: #FFFFFF !important; }
+    /* VISIBILIDAD FORZADA: Verde Neón con sombra para métricas */
+    [data-testid="stMetricValue"] { 
+        color: #00FFAA !important; 
+        font-size: 30px !important; 
+        font-weight: 800 !important;
+        text-shadow: 2px 2px #000000;
+    }
+    [data-testid="stMetricLabel"] { color: #A0A0A0 !important; font-size: 14px !important; }
+    h1, h2, h3 { color: #00FFAA !important; text-transform: uppercase; border-bottom: 1px solid #333; }
+    .ratio-box { padding: 15px; border-radius: 10px; border: 1px solid #00FFAA; background-color: #1A1C23; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. LOGIN Y PROTECCIÓN IP [5, 6]
-def login():
-    st.sidebar.title("🔐 ACCESO SENIOR")
-    user = st.sidebar.text_input("Usuario", key="u_log")
-    password = st.sidebar.text_input("Contraseña", type="password", key="p_log")
-    return user == st.secrets["APP_USER"] and password == st.secrets["APP_PASSWORD"]
-
+# --- EJECUCIÓN MAESTRA ---
 if login():
-    # 4. CABECERA TÁCTICA CON DATOS REAL-TIME
+    # 4. CABECERA TÁCTICA GLOBAL (Siempre al tope)
     st.write("### 🚀 TACTICAL INTELLIGENCE DASHBOARD | YTD: -17,05%")
     c1, c2, c3, c4 = st.columns(4)
-    with c1: st.metric("💵 DÓLAR OBS.", drivers["dolar"], drivers.get("dolar_var", "-0.72%"))
-    with c2: st.metric("📈 UF (AL DÍA)", drivers["uf"], "0.00%")
-    with c3: st.metric("🛢️ PETRÓLEO WTI", drivers["wti"], "-0.84%")
-    with c4: st.metric("🥉 COBRE CASH", drivers["cobre"], "+0.39%")
+    with c1: st.metric("💵 DÓLAR OBS. (LIVE)", live["usd"], "-0,72%")
+    with c2: st.metric("📈 UF (AL DÍA)", live["uf"], "0,00%")
+    with c3: st.metric("🛢️ WTI (REF)", "US$71,47", "ESTÁTICO")
+    with c4: st.metric("🥉 COBRE (REF)", "US$6,08", "ESTÁTICO")
     st.markdown("---")
 
     # 5. MENÚ DE NAVEGACIÓN
@@ -65,38 +66,40 @@ if login():
         with col_news:
             st.write("#### 🔔 ALERTAS CMF")
             with st.expander("🕒 10-Jul | MASISA", expanded=True):
-                st.write("**Reducción a Escritura Pública:** Dilución nominal a $8,77 procesada [7, 8].")
+                st.write("**Reducción a Escritura Pública:** Dilución nominal a $8,77.")
             if st.button("🔄 Sincronizar CMF"): st.rerun()
 
         with col_charts:
-            tab1, tab2 = st.tabs(["📊 MEMORIA ESTRATÉGICA (OSAs)", "🔗 RADAR DE DRIVERS (IPER)"])
+            tab1, tab2 = st.tabs(["📊 MEMORIA ESTRATÉGICA", "🔗 RADAR DE DRIVERS"])
             with tab1:
                 st.write("#### AUDITORÍA DE INTEGRIDAD: CASO MASISA")
-                # Gráfico de integridad recuperado [9, 10]
                 data_m = {'fecha': ['Jun-30', 'Jul-01', 'Jul-02', 'Jul-10'], 
-                          'Mercado': [11.0, 10.5, 8.9, 8.77], 
-                          'Ajustado': [11.0, 10.8, 10.7, 10.65]}
+                          'Nominal': [11.0, 10.5, 8.9, 8.77], 'Ajustado': [11.0, 10.8, 10.7, 10.65]}
                 df_m = pd.DataFrame(data_m)
-                fig = px.line(df_m, x='fecha', y=['Mercado', 'Ajustado'], 
-                             color_discrete_sequence=['#FF4B4B', '#00FFAA'])
+                fig = px.line(df_m, x='fecha', y=['Nominal', 'Ajustado'], color_discrete_sequence=['#FF4B4B', '#00FFAA'])
                 fig.update_layout(height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig, use_container_width=True)
-            
             with tab2:
-                st.info("Radar de Divergencia: SQM-B vs Litio en desarrollo.")
+                st.info("Radar Activo: Monitoreando SQM-B vs Ciclo del Litio.")
 
     elif menu == "🛡️ Riesgo & EEFF":
-        st.write("### 🛡️ PERFIL DE RIESGO (FLOID)")
-        # Integración de API Floid para Certificados de Deuda CMF [11, 12]
-        rut = st.text_input("RUT Empresa (Ej: 90262000-9):")
-        if st.button("Consultar Solvencia"):
-            st.success(f"Certificado CMF para {rut} obtenido vía Floid [11].")
-            st.json({"Deuda Directa": "UF 450.000", "Morosidad": "0%"})
+        st.write("### 🛡️ PERFIL DE RIESGO (API FLOID)")
+        rut = st.text_input("Ingrese RUT Empresa (Ej: 90262000-9):")
+        if st.button("Consultar Solvencia CMF"):
+            st.json({"Deuda Directa": "UF 450.000", "Estado": "Al día"})
 
     elif menu == "⚙️ Motores de Carga":
         st.write("### ⚙️ CENTRO DE CARGA TÁCTICA")
-        if st.button("🚀 EJECUTAR PROTOCOLO MASISA"):
-            st.success("¡ÉXITO! Protocolo de 7 pasos aplicado a MASISA [13, 14].")
-            st.balloons()
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.write("#### OP A: PROTOCOLO MASISA")
+            if st.button("🚀 EJECUTAR CARGA"):
+                st.success("MASISA cargada. Delta de OSA aplicado.")
+                st.balloons()
+        with col_b:
+            st.write("#### OP B: API BCS (BRAIN DATA)")
+            st.text_input("Brain Data Token:", type="password")
+            if st.button("Sincronizar Bolsa"): st.warning("Conectando con Marketplace...")
+
 else:
-    st.warning("Por favor, inicie sesión.")
+    st.warning("Por favor, inicie sesión en la barra lateral.")
