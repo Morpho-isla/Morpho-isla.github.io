@@ -3,13 +3,8 @@ from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
 import requests
-import traceback
-try:
-    # ... tu código normal ...
-except Exception as e:
-    st.error(f"ERROR DETALLADO: {e}")
-    st.text(traceback.format_exc())   
-# --- CONFIGURACIÓN DE CONEXIÓN SUPABASE ---
+
+# --- 1. CONFIGURACIÓN Y CONEXIÓN (Blindada) ---
 @st.cache_resource
 def init_connection():
     try:
@@ -17,15 +12,13 @@ def init_connection():
         key = st.secrets["SUPABASE_KEY"]
         return create_client(url, key)
     except Exception as e:
-        st.error(f"Error conectando a Supabase: {e}")
+        st.error(f"❌ Error Supabase: {e}")
         return None
 
 supabase = init_connection()
 
-# --- FUNCIÓN PARA OBTENER DATOS REALES ---
 def get_stock_data(nemotecnico):
-    if supabase is None:
-        return pd.DataFrame()
+    if supabase is None: return pd.DataFrame()
     try:
         response = supabase.table("precios_historicos").select("*").eq("nemotecnico", nemotecnico).order("fecha").execute()
         if response.data:
@@ -34,143 +27,66 @@ def get_stock_data(nemotecnico):
             return df
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"Error leyendo {nemotecnico}: {e}")
+        st.error(f"❌ Error datos: {e}")
         return pd.DataFrame()
 
-# --- 1. CONEXIÓN Y LOGIN (Tu estilo v1.5.1) ---
+# --- 2. LOGIN SIMPLE ---
 def login():
-    st.sidebar.title("🔐 ACCESO SENIOR")
-    # Usamos keys únicas para evitar conflictos de caché
-    user = st.sidebar.text_input("Usuario", key="u_login")
-    password = st.sidebar.text_input("Contraseña", type="password", key="p_login")
-    
-    # Validación simple (puedes poner tus credenciales en secrets también)
-    valid_user = st.secrets.get("APP_USER", "admin")
-    valid_pass = st.secrets.get("APP_PASSWORD", "1234")
-    
-    return user == valid_user and password == valid_pass
+    st.sidebar.title("🔐 ACCESO")
+    u = st.sidebar.text_input("Usuario", key="u")
+    p = st.sidebar.text_input("Contraseña", type="password", key="p")
+    # Credenciales por defecto si no están en secrets
+    valid_u = st.secrets.get("APP_USER", "admin")
+    valid_p = st.secrets.get("APP_PASSWORD", "1234")
+    return u == valid_u and p == valid_p
 
-# --- 2. MOTOR DE DATOS: BOOSTR API (Dólar/UF) ---
-def fetch_live_drivers():
-    try:
-        res = requests.get("https://api.boostr.cl/economy/indicators.json", timeout=5).json()
-        d = res['data']
-        return {"usd": f"${d['usd']['value']}", "uf": f"${d['uf']['value']:,}"}
-    except:
-        return {"usd": "$928,99", "uf": "$40.844,79"}
-
-live = fetch_live_drivers()
-
-# --- 3. UI/UX: ALTO CONTRASTE (CSS v1.5.1) ---
-st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.6")
+# --- 3. UI & ESTILOS (Oscuro y Táctico) ---
+st.set_page_config(layout="wide", page_title="Terminal IPSA-29")
 st.markdown("""
     <style>
-    .main { 
-        background-color: #0E1117 !important; 
-        color: #FFFFFF !important; 
-        position: relative !important;
-        z-index: 1 !important;
-    }
-    
-    h3 { 
-        color: #00FFAA !important; 
-        text-transform: uppercase; 
-        border-bottom: 1px solid #333; 
-        position: relative !important;
-        z-index: 100 !important;
-        margin-top: 20px !important;
-        padding-top: 10px !important;
-        background-color: #0E1117 !important;
-        display: block;
-        width: 100%;
-    }
-
-    [data-testid="stMetricValue"] { 
-        color: #00FFAA !important; font-size: 30px !important; font-weight: 800 !important;
-        text-shadow: 2px 2px #000000;
-    }
-    [data-testid="stMetricLabel"] { color: #A0A0A0 !important; font-size: 14px !important; }
-    
-    /* Asegurar que las columnas no colapsen */
-    .stColumn {
-        min-height: 100px !important;
-    }
-    </style>   
+    .main { background-color: #0E1117 !important; color: #FFF !important; }
+    h3 { color: #00FFAA !important; text-transform: uppercase; border-bottom: 1px solid #333; }
+    [data-testid="stMetricValue"] { color: #00FFAA !important; font-size: 28px !important; font-weight: 800; }
+    </style>
     """, unsafe_allow_html=True)
 
-# --- EJECUCIÓN MAESTRA ---
+# --- 4. EJECUCIÓN PRINCIPAL ---
 if login():
-    # 4. CABECERA TÁCTICA GLOBAL
-    st.write("### 🚀 TACTICAL INTELLIGENCE DASHBOARD | YTD: -17,05%")
+    # Cabecera
+    st.write("### 🚀 TACTICAL DASHBOARD | YTD: -17,05%")
     c1, c2, c3, c4 = st.columns(4)
-    with c1: st.metric("💵 DÓLAR OBS. (LIVE)", live["usd"], "-0,72%")
-    with c2: st.metric("📈 UF (AL DÍA)", live["uf"], "0.00%")
-    with c3: st.metric("🛢️ WTI OIL (UPDATE)", "US$76,67", "UP 7.2%") 
-    with c4: st.metric("🥉 COBRE (REF)", "US$6,08", "STATIC")
+    c1.metric("💵 DÓLAR", "$928,99", "-0.7%")
+    c2.metric("📈 UF", "$40.844", "0.0%")
+    c3.metric("🛢️ WTI", "$76,67", "UP")
+    c4.metric("🥉 COBRE", "$6,08", "STATIC")
     st.markdown("---")
 
-    menu = st.sidebar.radio("📋 MENÚ TÁCTICO", ["Dashboard Principal", "🛡️ Riesgo & EEFF", "⚙️ Motores de Carga"])
+    # Controles
+    st.sidebar.markdown("### 🎯 OBJETIVOS")
+    target = st.sidebar.selectbox("Nemotécnico", ["MASISA", "ABC", "CENCOSUD", "CHILE"])
+    if st.sidebar.button("VER MASISA"): target = "MASISA"
+    if st.sidebar.button("VER ABC"): target = "ABC"
 
-    if menu == "Dashboard Principal":
-        # Controles para seleccionar acción (Aquí está la clave)
-        st.sidebar.markdown("### 🎯 OBJETIVOS")
-        target = st.sidebar.selectbox("Seleccionar Nemotécnico", ["MASISA", "ABC", "CENCOSUD", "CHILE"])
-        
-        # Botones rápidos de emergencia
-        c_btn1, c_btn2 = st.sidebar.columns(2)
-        if c_btn1.button("VER MASISA"):
-            target = "MASISA"
-        if c_btn2.button("VER ABC"):
-            target = "ABC"
+    # Área Principal
+    col_news, col_charts = st.columns([1, 2])
+    
+    with col_news:
+        st.write("#### 🔔 NOTAS")
+        st.success("✅ **VENTA LTM:** Ejecución magistral.")
+        st.info(f"Analizando: **{target}**")
 
-        col_news, col_charts = st.columns(2) # División 50/50 estándar   
-        
-        with col_news:
-            st.write("#### 🔔 NOTAS DE CIERRE")
-            st.success("✅ **VENTA LTM (9:30 AM):** Ejecución magistral antes de caída IPSA.")
-            with st.expander(f"🕒 10-Jul | {target}", expanded=True):
-                st.write(f"**Integridad:** Datos cargados desde Supabase para {target}.")
-        
-        with col_charts:
-            tab1, tab2 = st.tabs(["📊 MEMORIA ESTRATÉGICA (REAL)", "🔗 RADAR DE DRIVERS"])
+    with col_charts:
+        tab1, tab2 = st.tabs(["📊 GRÁFICO REAL", "🔗 DRIVERS"])
+        with tab1:
+            st.write(f"#### AUDITORÍA: {target}")
+            df = get_stock_data(target)
             
-            with tab1:
-                st.write(f"#### AUDITORÍA: CASO {target}")
-                
-                # AQUÍ CONECTAMOS CON TUS DATOS REALES
-                df = get_stock_data(target)
-                            with tab1:
-                st.write(f"#### AUDITORÍA: CASO {target}")
-                
-                # Obtener datos
-                df = get_stock_data(target)
-                if not df.empty:
-                    # Gráfico con Plotly Express usando tus datos reales
-                    fig = px.line(df, x='fecha', y='precio_cierre', 
-                                  title=f"Evolución Real de {target} (Junio 2026)",
-                                  color_discrete_sequence=['#00FFAA'])
-                    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                      font=dict(color='white'))
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Mostrar métricas reales del último día
-                    last_close = df.iloc[-1]['precio_cierre']
-                    st.metric(f"Cierre Real {target}", f"${last_close:,.2f}")
-                else:
-                    st.warning(f"⚠️ No hay datos en Supabase para {target}. Revisa la carga masiva.")
-
-            with tab2:
-                st.warning("⚠️ Alerta WTI: Divergencia detectada. Revisar costos logísticos IPSA-29.")
-
-    elif menu == "⚙️ Motores de Carga":
-        st.write("### ⚙️ CENTRO DE CARGA TÁCTICA")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.write("#### OP A: PROTOCOLO MASISA")
-            if st.button("🚀 EJECUTAR CARGA"): st.balloons()
-        with col_b:
-            st.write("#### OP B: API BRAIN DATA (BCS)")
-            st.info("Estructura v1.6-Alpha: Sincronización automática vía API Bolsa de Santiago.")
-
-else:
-    st.warning("🔒 Por favor, inicie sesión para acceder a la terminal.")   
+            if not df.empty:
+                st.success(f"✅ {len(df)} registros cargados.")
+                # Gráfico con sombra (fill)
+                fig = px.line(df, x='fecha', y='precio_cierre', 
+                              title=f"Evolución {target}",
+                              color_discrete_sequence=['#00FFAA'])
+                fig.update_traces(fill='tozeroy', fillcolor='rgba(0, 255, 170, 0.2)')
+                fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                                  font=dict(c   
