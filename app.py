@@ -1,4 +1,4 @@
-﻿import streamlit as st
+import streamlit as st
 from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
@@ -89,4 +89,17 @@ if login():
                               color_discrete_sequence=['#00FFAA'])
                 fig.update_traces(fill='tozeroy', fillcolor='rgba(0, 255, 170, 0.2)')
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                  font=dict(c   
+                                  font=dict(color='white'), height=500)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Métrica final
+                st.metric("Cierre Reciente", f"${df.iloc[-1]['precio_cierre']:,.2f}")
+            else:
+                st.warning(f"⚠️ Sin datos para {target} en Supabase.")
+                
+        with tab2:
+            st.write("#### Correlaciones Macro")
+            st.info("Próximamente: Dólar, Cobre y WTI en tiempo real.")
+
+else:
+    st.warning("🔒 Inicie sesión para operar.")   
