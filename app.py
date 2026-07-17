@@ -60,16 +60,35 @@ live = fetch_live_drivers()
 st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.6")
 st.markdown("""
     <style>
-    /* Diagnóstico: Ver contenedores ocultos */
-    .stColumn {
-        border: 2px solid red !important;
-        min-height: 300px !important; /* Fuerza una altura mínima visible */
-        background-color: rgba(255, 0, 0, 0.1) !important; /* Fondo rojo transparente */
+    .main { 
+        background-color: #0E1117 !important; 
+        color: #FFFFFF !important; 
+        position: relative !important;
+        z-index: 1 !important;
     }
     
-    /* Asegurar que el área principal tenga espacio */
-    .main > div {
-        min-height: 100vh !important;
+    h3 { 
+        color: #00FFAA !important; 
+        text-transform: uppercase; 
+        border-bottom: 1px solid #333; 
+        position: relative !important;
+        z-index: 100 !important;
+        margin-top: 20px !important;
+        padding-top: 10px !important;
+        background-color: #0E1117 !important;
+        display: block;
+        width: 100%;
+    }
+
+    [data-testid="stMetricValue"] { 
+        color: #00FFAA !important; font-size: 30px !important; font-weight: 800 !important;
+        text-shadow: 2px 2px #000000;
+    }
+    [data-testid="stMetricLabel"] { color: #A0A0A0 !important; font-size: 14px !important; }
+    
+    /* Asegurar que las columnas no colapsen */
+    .stColumn {
+        min-height: 100px !important;
     }
     </style>   
     """, unsafe_allow_html=True)
