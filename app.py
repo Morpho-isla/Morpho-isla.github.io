@@ -86,6 +86,30 @@ st.markdown("""
         text-shadow: 2px 2px #000000;
     }
     [data-testid="stMetricLabel"] { color: #A0A0A0 !important; font-size: 14px !important; }
+        /* Forzar que las columnas principales tengan altura visible */
+    .stColumn {
+        min-height: 200px !important;
+        overflow: visible !important; /* Evita que el contenido se recorte */
+    }
+    
+    /* Asegurar que el contenedor del gráfico no tenga margen negativo */
+    [data-testid="stVerticalBlock"] {
+        margin-top: 0px !important;
+    }
+
+    /* Tu estilo del título (ajustado) */
+    h3 { 
+        color: #00FFAA !important; 
+        text-transform: uppercase; 
+        border-bottom: 1px solid #333; 
+        position: relative !important;
+        z-index: 100 !important;
+        margin-top: 20px !important;
+        padding-top: 10px !important;
+        background-color: #0E1117 !important;
+        display: block;
+        width: 100%;
+    }   
     </style>   
     """, unsafe_allow_html=True)
 
