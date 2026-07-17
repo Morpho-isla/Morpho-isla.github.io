@@ -60,27 +60,27 @@ live = fetch_live_drivers()
 st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.6")
 st.markdown("""
     <style>
-    /* Forzar que el contenido principal no se superponga */
     .main { 
         background-color: #0E1117 !important; 
         color: #FFFFFF !important; 
-        position: relative !important; /* Clave: evita superposiciones */
+        position: relative !important;
         z-index: 1 !important;
-        margin-top: 10px !important; /* Espacio de seguridad superior */
     }
     
-    /* Asegurar que los títulos sean visibles */
-    h1, h2, h3 { 
+    /* Ajuste específico para el título de 3 hashes (###) */
+    h3 { 
         color: #00FFAA !important; 
         text-transform: uppercase; 
         border-bottom: 1px solid #333; 
         position: relative !important;
-        z-index: 10 !important; /* Títulos siempre por encima */
-        margin-top: 20px !important;
-        padding-top: 10px !important;
+        z-index: 100 !important; /* Prioridad máxima */
+        margin-top: 40px !important; /* Más espacio arriba */
+        padding-top: 20px !important; /* Relleno interno */
+        background-color: #0E1117 !important; /* Mismo fondo para tapar lo que haya detrás */
+        display: inline-block; /* Para que el fondo funcione solo en el texto */
+        width: 100%;
     }
 
-    /* Estilos existentes de métricas */
     [data-testid="stMetricValue"] { 
         color: #00FFAA !important; font-size: 30px !important; font-weight: 800 !important;
         text-shadow: 2px 2px #000000;
