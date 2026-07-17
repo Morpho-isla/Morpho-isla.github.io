@@ -3,7 +3,12 @@ from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
 import requests
-
+import traceback
+try:
+    # ... tu código normal ...
+except Exception as e:
+    st.error(f"ERROR DETALLADO: {e}")
+    st.text(traceback.format_exc())   
 # --- CONFIGURACIÓN DE CONEXIÓN SUPABASE ---
 @st.cache_resource
 def init_connection():
