@@ -139,8 +139,6 @@ if login():
                 
                 # Obtener datos
                 df = get_stock_data(target)
-                
-                # -----------------------------------   
                 if not df.empty:
                     # Gráfico con Plotly Express usando tus datos reales
                     fig = px.line(df, x='fecha', y='precio_cierre', 
