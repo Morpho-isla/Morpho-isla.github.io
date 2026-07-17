@@ -114,7 +114,7 @@ if login():
         if c_btn2.button("VER ABC"):
             target = "ABC"
 
-        col_news, col_charts = st.columns([1, 2.5])
+        col_news, col_charts = st.columns(2) # División 50/50 estándar   
         
         with col_news:
             st.write("#### 🔔 NOTAS DE CIERRE")
