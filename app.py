@@ -2,82 +2,39 @@
 import plotly.graph_objects as go
 from db_utils import obtener_datos_accion, obtener_todos_los_nemotecnicos
 
-# Configuración de la página
 st.set_page_config(page_title="Dashboard Bolsa - Sinergia", layout="wide")
 
+# Diagnóstico inicial
+if "SUPABASE_URL" not in st.secrets:
+    st.error("🚨 FALTAN LOS SECRETS: No se encuentra 'SUPABASE_URL' en la configuración de Streamlit.")
+    st.stop()
+
 st.title("📈 Dashboard de Acciones: Mirada de Datos")
-st.markdown("Visualización de series temporales con enfoque en **MASISA** y **ABC**.")
 
-# Sidebar para controles
+# Sidebar
 st.sidebar.header("Controles")
-nemotecnico = st.sidebar.selectbox(
-    "Selecciona un Nemotécnico:",
-    obtener_todos_los_nemotecnicos()
-)
+lista_nemos = obtener_todos_los_nemotecnicos()
 
-# Botón rápido para los "protagonistas" del YTD
-if st.sidebar.button("Ver MASISA (YTD -18%)"):
+if not lista_nemos:
+    st.warning("⚠️ No se pudieron cargar los nemotécnicos. Revisa la conexión a Supabase.")
+    st.stop()
+
+nemotecnico = st.sidebar.selectbox("Selecciona un Nemotécnico:", lista_nemos)
+
+# Botones rápidos
+col1, col2 = st.sidebar.columns(2)
+if col1.button("Ver MASISA"):
     nemotecnico = "MASISA"
-if st.sidebar.button("Ver ABC (YTD -18%)"):
+if col2.button("Ver ABC"):
     nemotecnico = "ABC"
 
-# Obtener datos
+# Carga de datos
 with st.spinner(f"Cargando datos de {nemotecnico}..."):
     df = obtener_datos_accion(nemotecnico)
 
 if not df.empty:
-    # Mostrar métricas clave
-    col1, col2, col3 = st.columns(3)
-    ultimo_cierre = df.iloc[-1]['precio_cierre']
-    variacion = df.iloc[-1]['variacion']
-    maximo_hist = df['precio_cierre'].max()
-    
-    col1.metric("Último Cierre", f"${ultimo_cierre:,.2f}")
-    col2.metric("Variación Última", f"{variacion:.2f}%")
-    col3.metric("Máximo Histórico (Periodo)", f"${maximo_hist:,.2f}")
-
-    # Gráfico Principal con Plotly
-    fig = go.Figure()
-
-    # Línea de Precio
-    fig.add_trace(go.Scatter(
-        x=df['fecha'], 
-        y=df['precio_cierre'], 
-        mode='lines', 
-        name='Precio Cierre',
-        line=dict(color='#00CC96', width=3),
-        fill='tozeroy', # Efecto de "sombra" bajo la línea
-        fillcolor='rgba(0, 204, 150, 0.2)'
-    ))
-
-    # Puntos de Máximo y Mínimo (para ver la volatilidad)
-    fig.add_trace(go.Scatter(
-        x=df['fecha'], 
-        y=df['precio_maximo'], 
-        mode='markers', 
-        name='Precio Máximo',
-        marker=dict(color='orange', size=6),
-        opacity=0.6
-    ))
-
-    fig.update_layout(
-        title=f"Evolución de {nemotecnico} - Precio y Sombras",
-        xaxis_title="Fecha",
-        yaxis_title="Precio ($)",
-        hovermode='x unified',
-        template='plotly_dark', # Tema oscuro para combinar con la lluvia
-        height=600
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Mostrar tabla de datos recientes
-    with st.expander("Ver datos detallados"):
-        st.dataframe(df.sort_values(by='fecha', ascending=False).head(20))
-
+    # ... (El resto de tu código de gráficos va aquí) ...
+    st.success(f"✅ Datos cargados: {len(df)} registros encontrados.")
+    # (Aquí insertas el código de Plotly que ya tenías)
 else:
-    st.warning(f"No se encontraron datos para {nemotecnico}.")
-
-# Pie de página
-st.markdown("---")
-st.caption("Datos cargados desde Supabase | Desarrollado con Streamlit & Plotly")   
+    st.warning(f"⚠️ No hay datos disponibles para {nemotecnico} en el rango seleccionado.")   
