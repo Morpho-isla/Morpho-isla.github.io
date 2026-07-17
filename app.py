@@ -140,24 +140,6 @@ if login():
                 # Obtener datos
                 df = get_stock_data(target)
                 
-                # --- DEPURACIÓN: VERIFICAR DATOS ---
-                if df.empty:
-                    st.error(f"❌ ERROR: No se encontraron datos para {target} en Supabase.")
-                    st.write("Revisa que el nemotécnico esté bien escrito en la BD.")
-                else:
-                    st.success(f"✅ Datos cargados: {len(df)} registros encontrados para {target}.")
-                    st.write(df.head()) # Muestra las primeras 5 filas para confirmar
-                    
-                    # Si hay datos, intenta graficar
-                    try:
-                        fig = px.line(df, x='fecha', y='precio_cierre', 
-                                      title=f"Evolución Real de {target}",
-                                      color_discrete_sequence=['#00FFAA'])
-                        fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                                          font=dict(color='white'))
-                        st.plotly_chart(fig, use_container_width=True)
-                    except Exception as e:
-                        st.error(f"❌ Error al graficar: {e}")
                 # -----------------------------------   
                 if not df.empty:
                     # Gráfico con Plotly Express usando tus datos reales
