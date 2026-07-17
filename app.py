@@ -74,8 +74,8 @@ st.markdown("""
         border-bottom: 1px solid #333; 
         position: relative !important;
         z-index: 100 !important; /* Prioridad máxima */
-        margin-top: 40px !important; /* Más espacio arriba */
-        padding-top: 20px !important; /* Relleno interno */
+        margin-top: 10px !important; /* Más espacio arriba */
+        padding-top: 40px !important; /* Relleno interno */
         background-color: #0E1117 !important; /* Mismo fondo para tapar lo que haya detrás */
         display: inline-block; /* Para que el fondo funcione solo en el texto */
         width: 100%;
