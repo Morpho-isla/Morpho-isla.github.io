@@ -21,17 +21,25 @@ def get_stock_data(nemotecnico):
     if supabase is None: return pd.DataFrame()
     try:
         response = supabase.table("precios_historicos").select("*").eq("nemotecnico", nemotecnico).order("fecha").execute()
+        
         if response.data:
             df = pd.DataFrame(response.data)
+            
+            # 1. Primero convertimos la fecha
             df['fecha'] = pd.to_datetime(df['fecha'])
-            return df
-            # Forzar conversión a numérico, eliminando errores de texto
-            df['precio_cierre'] = pd.to_numeric(df['precio_cierre'], errors='coerce')   
+            
+            # 2. AHORA forzamos la conversión numérica (ANTES del return)
+            df['precio_cierre'] = pd.to_numeric(df['precio_cierre'], errors='coerce')
+            
+            # Opcional: Haz lo mismo con otras columnas numéricas si es necesario
+            # df['volumen'] = pd.to_numeric(df['volumen'], errors='coerce')
+            
+            return df  # <--- El return va AL FINAL, después de limpiar
+            
         return pd.DataFrame()
     except Exception as e:
         st.error(f"❌ Error datos: {e}")
-        return pd.DataFrame()
-
+        return pd.DataFrame()   
 # --- 2. LOGIN SIMPLE ---
 def login():
     st.sidebar.title("🔐 ACCESO")
