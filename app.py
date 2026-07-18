@@ -25,6 +25,8 @@ def get_stock_data(nemotecnico):
             df = pd.DataFrame(response.data)
             df['fecha'] = pd.to_datetime(df['fecha'])
             return df
+            # Forzar conversión a numérico, eliminando errores de texto
+            df['precio_cierre'] = pd.to_numeric(df['precio_cierre'], errors='coerce')   
         return pd.DataFrame()
     except Exception as e:
         st.error(f"❌ Error datos: {e}")
