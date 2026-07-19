@@ -20,27 +20,33 @@ supabase = init_connection()
 def get_stock_data(nemotecnico):
     if supabase is None: return pd.DataFrame()
     try:
-        response = supabase.table("precios_historicos").select("*").eq("nemotecnico", nemotecnico).order("fecha").execute()
+        # 1. Traemos los datos con un filtro más amplio (ilike ignora mayúsculas/minúsculas)
+        # O traemos todo y filtramos en Python para mayor seguridad
+        response = supabase.table("precios_historicos").select("*").execute()
         
         if response.data:
             df = pd.DataFrame(response.data)
             
-            # 1. Primero convertimos la fecha
-            df['fecha'] = pd.to_datetime(df['fecha'])
+            # 2. Limpieza en Python: Eliminamos espacios en blanco de la columna nemotecnico
+            df['nemotecnico'] = df['nemotecnico'].astype(str).str.strip().str.upper()
             
-            # 2. AHORA forzamos la conversión numérica (ANTES del return)
-            df['precio_cierre'] = pd.to_numeric(df['precio_cierre'], errors='coerce')
+            # 3. Filtramos ahora sí, asegurando coincidencia exacta tras la limpieza
+            df_filtrado = df[df['nemotecnico'] == nemotecnico.upper()]
             
-            # Opcional: Haz lo mismo con otras columnas numéricas si es necesario
-            # df['volumen'] = pd.to_numeric(df['volumen'], errors='coerce')
+            if df_filtrado.empty:
+                return pd.DataFrame()
             
-            return df  # <--- El return va AL FINAL, después de limpiar
+            # 4. Convertimos fechas y números
+            df_filtrado['fecha'] = pd.to_datetime(df_filtrado['fecha'])
+            df_filtrado['precio_cierre'] = pd.to_numeric(df_filtrado['precio_cierre'], errors='coerce')
+            
+            return df_filtrado
             
         return pd.DataFrame()
     except Exception as e:
         st.error(f"❌ Error datos: {e}")
         return pd.DataFrame()   
-# --- 2. LOGIN SIMPLE ---
+        # --- 2. LOGIN SIMPLE ---
 def login():
     st.sidebar.title("🔐 ACCESO")
     u = st.sidebar.text_input("Usuario", key="u")
