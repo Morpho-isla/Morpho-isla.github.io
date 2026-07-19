@@ -99,16 +99,6 @@ if login():
                 # Obtener datos
                 df = get_stock_data(target)
                 
-                # --- DEPURACIÓN: VER QUÉ HAY EN DF ---
-                st.info(f"🔍 Depuración: Se encontraron {len(df)} registros crudos.")
-                if not df.empty:
-                    st.write("Primeras filas del DataFrame (antes de filtrar):")
-                    st.write(df[['nemotecnico', 'fecha', 'precio_cierre']].head()) # Mostramos solo columnas clave
-                    
-                    # Mostramos cómo se ve el nemotécnico limpio vs sucio
-                    st.write(f"Valor buscado: '{target}' | Valores únicos en BD: {df['nemotecnico'].unique()}")
-                # -------------------------------------
-
                 if not df.empty:
                     st.success(f"✅ {len(df)} registros cargados y limpios.")
                     # ... (resto del código del gráfico) ...
