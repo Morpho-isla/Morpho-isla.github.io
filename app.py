@@ -28,7 +28,7 @@ if login():
     # 3. CONSULTA BLINDADA (Uso de paréntesis en lugar de \ para evitar el error en línea 35)
     response = (
         supabase.table("precios_historicos")
-        .select("fecha, precio_cierre, variacion, precio_mayor, precio_menor, monto")
+        .select("+")
         .eq("nemotecnico", selected_nemo)
         .execute()
     )
