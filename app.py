@@ -41,20 +41,19 @@ if login():
             if not df.empty:
                 df['fecha'] = pd.to_datetime(df['fecha'])
                 
-                # 2. MOTOR DE NORMALIZACIÓN (BASE 100)
-                # Calculamos el rendimiento relativo para comparar activos de distinto valor
+                # --- MOTOR DE NORMALIZACIÓN (BASE 100) CORREGIDO v1.6.3 ---
+                # Usamos iloc para extraer el valor real del primer registro del grupo
                 df['base_100'] = df.groupby('nemotecnico')['precio_cierre'].transform(
-                    lambda x: (x / x.iloc) * 100 if not x.empty else 0
+                    lambda x: (x / x.iloc) * 100 if len(x) > 0 else 0
                 )
 
-                # 3. VISUALIZACIÓN ELEGANTE (ESTILO BÚNKER)
+                # 2. Visualización Estilo Búnker
                 fig = px.line(df, x='fecha', y='base_100', color='nemotecnico',
                              title="📈 Correlación de Rendimiento Relativo (Base 100)",
                              labels={'base_100': 'Rendimiento (%)', 'fecha': 'Fecha'},
-                             template="plotly_dark") # Fondo oscuro para resaltar las líneas
+                             template="plotly_dark") 
                 
                 st.plotly_chart(fig, use_container_width=True)
-
                 # 4. MATRIZ DE AUDITORÍA CONSOLIDADA
                 with st.expander("🔍 Ver Datos Crudos de Correlación"):
                     # Pivoteamos la tabla para ver los precios lado a lado
