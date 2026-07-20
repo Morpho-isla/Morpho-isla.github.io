@@ -21,41 +21,43 @@ def login():
 if login():
     st.title("📊 Dashboard Bursátil IPSA-29")
     
-    nemo_list = ["MASISA", "LTM", "CMPC", "VAPORES", "SQM-B", "CHILE", "BCI"]
-    selected_nemo = st.selectbox("Seleccione Nemotécnico:", nemo_list)
+    # 1. Selector Múltiple para Correlación
+    nemo_list = ["MASISA", "LTM", "CMPC", "VAPORES", "SQM-B", "CHILE", "BCI", "COPEC"]
+    selected_nemos = st.multiselect("Seleccione Activos para Correlacionar:", nemo_list, default=["MASISA"])
 
-    # --- SONDA 1: Verificación de Input ---
-    st.info(f"🔍 DEBUG 1: Consultando nemotécnico: '{selected_nemo}' (Largo: {len(selected_nemo)})")
-
-    try:
-        # Llamada a la función RPC que creamos en el editor SQL
-        response = supabase.rpc('buscar_nemo_debug', {'nemo_ingresado': selected_nemo}).execute()
-        
-        # --- SONDA 2: Respuesta Cruda del Servidor ---
-        st.write("📡 DEBUG 2: Respuesta cruda del servidor:")
-        st.json(response.data[:2] if response.data else "LISTA VACÍA") # Muestra solo los primeros 2 registros para no saturar
-
-        if response.data:
+    if selected_nemos:
+        try:
+            # Consulta masiva usando el operador 'in' de Supabase
+            response = (
+                supabase.table("precios_historicos")
+                .select("fecha, nemotecnico, precio_cierre")
+                .in_("nemotecnico", selected_nemos)
+                .order("fecha", ascending=True)
+                .execute()
+            )
+            
             df = pd.DataFrame(response.data)
-            
-            # --- SONDA 3: Estructura del DataFrame ---
-            st.write("📋 DEBUG 3: Columnas detectadas en el DataFrame:")
-            st.write(list(df.columns))
-            
-            # Normalización de fecha
-            df['fecha'] = pd.to_datetime(df['fecha'])
-            
-            st.success(f"✅ ÉXITO: Se encontraron {len(df)} registros.")
-            
-            fig = px.line(df, x='fecha', y='precio_cierre', 
-                         title=f"Serie Histórica: {selected_nemo}")
-            st.plotly_chart(fig, use_container_width=True)
 
-            with st.expander("🔍 Ver Matriz de Datos"):
-                st.dataframe(df.sort_values(by="fecha", ascending=False))
-        else:
-            st.error(f"⚠️ DEBUG: La base de datos respondió una lista VACÍA para '{selected_nemo}'.")
-            st.info("💡 Posible causa: Row Level Security (RLS) activo en Supabase. Verifica si la tabla tiene 'Enable Read Access' para todos los usuarios.")
-            
-    except Exception as e:
-        st.error(f"❌ ERROR TÉCNICO: {e}")
+            if not df.empty:
+                df['fecha'] = pd.to_datetime(df['fecha'])
+                
+                # --- MOTOR DE NORMALIZACIÓN (BASE 100) ---
+                # Esto permite comparar activos de distinto valor nominal
+                df['base_100'] = df.groupby('nemotecnico')['precio_cierre'].transform(
+                    lambda x: (x / x.iloc) * 100
+                )
+
+                # 2. Gráfico de Correlación Relativa
+                fig = px.line(df, x='fecha', y='base_100', color='nemotecnico',
+                             title="📈 Correlación de Rendimiento Relativo (Base 100)",
+                             labels={'base_100': 'Rendimiento (%)', 'fecha': 'Fecha'})
+                
+                st.plotly_chart(fig, use_container_width=True)
+
+                # 3. Matriz de Auditoría Consolidada
+                with st.expander("🔍 Ver Datos Crudos de Correlación"):
+                    st.dataframe(df.pivot(index='fecha', columns='nemotecnico', values='precio_cierre'))
+            else:
+                st.error("No se encontraron datos para los activos seleccionados.")
+        except Exception as e:
+            st.error(f"Error en el motor de correlación: {e}")
