@@ -17,36 +17,37 @@ def login():
         return True
     return False
 
+
 if login():
     st.title("📊 Dashboard Bursátil IPSA-29")
     
-    # 2. SELECCIÓN DE ACTIVO
-    # Incluimos los activos clave que mencionaste
     nemo_list = ["MASISA", "LTM", "CMPC", "VAPORES", "SQM-B", "CHILE", "BCI"]
     selected_nemo = st.selectbox("Seleccione Nemotécnico:", nemo_list)
 
-    # 3. CONSULTA BLINDADA (Uso de paréntesis en lugar de \ para evitar el error en línea 35)
-    response = (
-        supabase.table("precios_historicos")
-        .select("*")
-        .eq("nemotecnico", selected_nemo)
-        .execute()
-    )
-    
-    df = pd.DataFrame(response.data)
-
-    if not df.empty:
-        # Normalización de fecha para el gráfico
-        df['fecha'] = pd.to_datetime(df['fecha'])
+    # --- CONSULTA VÍA RPC (Instrucción Directa) ---
+    try:
+        # Llamamos a la función que creamos en el paso anterior
+        response = supabase.rpc('buscar_nemo_debug', {'nemo_ingresado': selected_nemo}).execute()
+        df = pd.DataFrame(response.data)
         
-        # 4. VISUALIZACIÓN GRÁFICA (Lo que ya ves en Supabase, ahora en la web)
-        fig = px.line(df, x='fecha', y='precio_cierre', 
-                     title=f"Evolución Histórica: {selected_nemo}",
-                     labels={'precio_cierre': 'Precio ($)', 'fecha': 'Fecha'})
-        st.plotly_chart(fig, use_container_width=True)
+        if not df.empty:
+            # Normalización (Aseguramos que las columnas existan)
+            df['fecha'] = pd.to_datetime(df['fecha'])
+            
+            # --- VERIFICACIÓN DE COLUMNAS (Para evitar el KeyError 'variation') ---
+            # Tus logs muestran que buscas 'variation', pero cargaste 'variacion' [1, 2]
+            st.write(f"✅ Registros encontrados para {selected_nemo}: {len(df)}")
+            
+            fig = px.line(df, x='fecha', y='precio_cierre', 
+                         title=f"Serie Histórica: {selected_nemo}")
+            st.plotly_chart(fig, use_container_width=True)
 
-        # 5. MATRIZ DE AUDITORÍA (Sección depurada de logs anteriores)
-        with st.expander("🔍 Ver Matriz de Datos (Detalle de Junio 2026)"):
-            st.dataframe(df.sort_values(by="fecha", ascending=False))
-    else:
-        st.warning(f"No se encontraron registros para {selected_nemo} en la base de datos.")
+            with st.expander("🔍 Ver Matriz de Datos"):
+                st.dataframe(df.sort_values(by="fecha", ascending=False))
+        else:
+            st.error(f"La base de datos respondió vacío para '{selected_nemo}'.")
+            # Tip del Socio: Verifica si tienes activado RLS (Row Level Security) 
+            # sin políticas de acceso, eso bloquea la app pero no el editor.
+            
+    except Exception as e:
+        st.error(f"Error técnico en la consulta: {e}")
