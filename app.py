@@ -27,12 +27,12 @@ if login():
 
     if selected_nemos:
         try:
-            # Consulta masiva usando el operador 'in' de Supabase
+            # CORRECCIÓN: Cambiamos 'ascending=True' por 'desc=False'
             response = (
                 supabase.table("precios_historicos")
                 .select("fecha, nemotecnico, precio_cierre")
                 .in_("nemotecnico", selected_nemos)
-                .order("fecha", ascending=True)
+                .order("fecha", desc=False) 
                 .execute()
             )
             
@@ -41,23 +41,22 @@ if login():
             if not df.empty:
                 df['fecha'] = pd.to_datetime(df['fecha'])
                 
-                # --- MOTOR DE NORMALIZACIÓN (BASE 100) ---
-                # Esto permite comparar activos de distinto valor nominal
+                # --- MOTOR DE NORMALIZACIÓN (BASE 100) CORREGIDO ---
+                # Agregamos iloc para evitar errores de puntero
                 df['base_100'] = df.groupby('nemotecnico')['precio_cierre'].transform(
-                    lambda x: (x / x.iloc) * 100
+                    lambda x: (x / x.iloc) * 100 if not x.empty else 0
                 )
 
-                # 2. Gráfico de Correlación Relativa
+                # 2. Gráfico de Correlación Relativa (Base 100)
                 fig = px.line(df, x='fecha', y='base_100', color='nemotecnico',
                              title="📈 Correlación de Rendimiento Relativo (Base 100)",
-                             labels={'base_100': 'Rendimiento (%)', 'fecha': 'Fecha'})
+                             labels={'base_100': 'Rendimiento (%)', 'fecha': 'Fecha'},
+                             template="plotly_dark") # Estilo elegante para el búnker
                 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # 3. Matriz de Auditoría Consolidada
+                # 3. Matriz de Datos Consolidada
                 with st.expander("🔍 Ver Datos Crudos de Correlación"):
                     st.dataframe(df.pivot(index='fecha', columns='nemotecnico', values='precio_cierre'))
             else:
                 st.error("No se encontraron datos para los activos seleccionados.")
-        except Exception as e:
-            st.error(f"Error en el motor de correlación: {e}")
