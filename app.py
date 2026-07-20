@@ -27,12 +27,12 @@ if login():
 
     if selected_nemos:
         try:
-            # CORRECCIÓN: Cambiamos 'ascending=True' por 'desc=False'
+            # 1. CONSULTA A SUPABASE (Usando desc=False para evitar error previo)
             response = (
                 supabase.table("precios_historicos")
                 .select("fecha, nemotecnico, precio_cierre")
                 .in_("nemotecnico", selected_nemos)
-                .order("fecha", desc=False) 
+                .order("fecha", desc=False) # Parámetro correcto para v2.31.0
                 .execute()
             )
             
@@ -41,22 +41,29 @@ if login():
             if not df.empty:
                 df['fecha'] = pd.to_datetime(df['fecha'])
                 
-                # --- MOTOR DE NORMALIZACIÓN (BASE 100) CORREGIDO ---
-                # Agregamos iloc para evitar errores de puntero
+                # 2. MOTOR DE NORMALIZACIÓN (BASE 100)
+                # Calculamos el rendimiento relativo para comparar activos de distinto valor
                 df['base_100'] = df.groupby('nemotecnico')['precio_cierre'].transform(
                     lambda x: (x / x.iloc) * 100 if not x.empty else 0
                 )
 
-                # 2. Gráfico de Correlación Relativa (Base 100)
+                # 3. VISUALIZACIÓN ELEGANTE (ESTILO BÚNKER)
                 fig = px.line(df, x='fecha', y='base_100', color='nemotecnico',
                              title="📈 Correlación de Rendimiento Relativo (Base 100)",
                              labels={'base_100': 'Rendimiento (%)', 'fecha': 'Fecha'},
-                             template="plotly_dark") # Estilo elegante para el búnker
+                             template="plotly_dark") # Fondo oscuro para resaltar las líneas
                 
                 st.plotly_chart(fig, use_container_width=True)
 
-                # 3. Matriz de Datos Consolidada
+                # 4. MATRIZ DE AUDITORÍA CONSOLIDADA
                 with st.expander("🔍 Ver Datos Crudos de Correlación"):
-                    st.dataframe(df.pivot(index='fecha', columns='nemotecnico', values='precio_cierre'))
+                    # Pivoteamos la tabla para ver los precios lado a lado
+                    df_pivot = df.pivot(index='fecha', columns='nemotecnico', values='precio_cierre')
+                    st.dataframe(df_pivot.sort_index(ascending=False))
             else:
-                st.error("No se encontraron datos para los activos seleccionados.")
+                # Línea 62: Ahora está dentro de una estructura try-except completa
+                st.error("No se encontraron datos para los activos seleccionados en Supabase.")
+        
+        except Exception as e:
+            # ESTE ES EL BLOQUE QUE Python reclama: el cierre del try
+            st.error(f"❌ Error en el motor de correlación: {e}")
