@@ -8,8 +8,8 @@ import numpy as np
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
-
-if login(): # Asumimos la función login() ya definida
+# Asumimos la función login() ya definida
+if login(): 
     st.title("🚀 Terminal IPSA-29: Inteligencia Avanzada")
 
     # --- ZARPAZO TÁCTICO: Obtener Nemos Reales de la DB ---
