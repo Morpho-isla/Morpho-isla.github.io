@@ -24,19 +24,28 @@ if login():
     nemo_list = ["MASISA", "LTM", "CMPC", "VAPORES", "SQM-B", "CHILE", "BCI"]
     selected_nemo = st.selectbox("Seleccione Nemotécnico:", nemo_list)
 
-    # --- CONSULTA VÍA RPC (Instrucción Directa) ---
+    # --- SONDA 1: Verificación de Input ---
+    st.info(f"🔍 DEBUG 1: Consultando nemotécnico: '{selected_nemo}' (Largo: {len(selected_nemo)})")
+
     try:
-        # Llamamos a la función que creamos en el paso anterior
+        # Llamada a la función RPC que creamos en el editor SQL
         response = supabase.rpc('buscar_nemo_debug', {'nemo_ingresado': selected_nemo}).execute()
-        df = pd.DataFrame(response.data)
         
-        if not df.empty:
-            # Normalización (Aseguramos que las columnas existan)
+        # --- SONDA 2: Respuesta Cruda del Servidor ---
+        st.write("📡 DEBUG 2: Respuesta cruda del servidor:")
+        st.json(response.data[:2] if response.data else "LISTA VACÍA") # Muestra solo los primeros 2 registros para no saturar
+
+        if response.data:
+            df = pd.DataFrame(response.data)
+            
+            # --- SONDA 3: Estructura del DataFrame ---
+            st.write("📋 DEBUG 3: Columnas detectadas en el DataFrame:")
+            st.write(list(df.columns))
+            
+            # Normalización de fecha
             df['fecha'] = pd.to_datetime(df['fecha'])
             
-            # --- VERIFICACIÓN DE COLUMNAS (Para evitar el KeyError 'variation') ---
-            # Tus logs muestran que buscas 'variation', pero cargaste 'variacion' [1, 2]
-            st.write(f"✅ Registros encontrados para {selected_nemo}: {len(df)}")
+            st.success(f"✅ ÉXITO: Se encontraron {len(df)} registros.")
             
             fig = px.line(df, x='fecha', y='precio_cierre', 
                          title=f"Serie Histórica: {selected_nemo}")
@@ -45,9 +54,8 @@ if login():
             with st.expander("🔍 Ver Matriz de Datos"):
                 st.dataframe(df.sort_values(by="fecha", ascending=False))
         else:
-            st.error(f"La base de datos respondió vacío para '{selected_nemo}'.")
-            # Tip del Socio: Verifica si tienes activado RLS (Row Level Security) 
-            # sin políticas de acceso, eso bloquea la app pero no el editor.
+            st.error(f"⚠️ DEBUG: La base de datos respondió una lista VACÍA para '{selected_nemo}'.")
+            st.info("💡 Posible causa: Row Level Security (RLS) activo en Supabase. Verifica si la tabla tiene 'Enable Read Access' para todos los usuarios.")
             
     except Exception as e:
-        st.error(f"Error técnico en la consulta: {e}")
+        st.error(f"❌ ERROR TÉCNICO: {e}")
