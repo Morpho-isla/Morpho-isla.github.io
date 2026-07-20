@@ -30,7 +30,6 @@ if login():
         supabase.table("precios_historicos")
         .select("fecha, precio_cierre, variacion, precio_mayor, precio_menor, monto")
         .eq("nemotecnico", selected_nemo)
-        .order("fecha", ascending=True)
         .execute()
     )
     
