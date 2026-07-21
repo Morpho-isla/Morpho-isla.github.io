@@ -7,7 +7,13 @@ import numpy as np
 # Configuración y Conexión
 st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.9.1")
 supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
-
+def login():
+    st.sidebar.title("🔐 Acceso Analista Senior")
+    user = st.sidebar.text_input("Usuario", key="user_login")
+    password = st.sidebar.text_input("Contraseña", type="password", key="pass_login")
+    if user == st.secrets["APP_USER"] and password == st.secrets["APP_PASSWORD"]:
+        return True
+    return False
 if login(): # Función login() persistente
     menu = st.sidebar.radio("📋 MENÚ TÁCTICO", ["🚨 Radar de Emergencia", "🧪 Laboratorio de Análisis"])
     
