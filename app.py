@@ -4,64 +4,66 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 
-# 1. Configuración de Conexión y Estilo wide
-st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.9")
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(url, key)
+# Configuración y Conexión
+st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.9.1")
+supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
-def login():
-    st.sidebar.title("🔐 Acceso Analista Senior")
-    user = st.sidebar.text_input("Usuario", key="user_login")
-    password = st.sidebar.text_input("Contraseña", type="password", key="pass_login")
-    if user == st.secrets["APP_USER"] and password == st.secrets["APP_PASSWORD"]:
-        return True
-    return False
-
-if login():
-    # --- MENÚ DE NAVEGACIÓN ---
-    st.sidebar.markdown("---")
-    menu = st.sidebar.radio("📋 MENÚ TÁCTICO", ["🚨 Radar de Emergencia", "📈 Laboratorio de Análisis"])
-
-    # ZARPAZO TÁCTICO: Obtener Nemos para toda la app
+if login(): # Función login() persistente
+    menu = st.sidebar.radio("📋 MENÚ TÁCTICO", ["🚨 Radar de Emergencia", "🧪 Laboratorio de Análisis"])
+    
+    # Zarpazo: Obtenemos nemos únicos desde la vista SQL que creamos
     res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
     nemo_reales = [d['nemotecnico'] for d in res_nemos.data]
 
     if menu == "🚨 Radar de Emergencia":
-        st.title("🚀 Terminal IPSA-29: Operaciones en Vivo")
-        st.subheader("⚠️ Radar de Contingencia BCS (Filtrado Sin CFI)")
+        st.title("🚀 Radar de Contingencia y Verdad")
         
-        # Consulta para la última sesión (Corregida la duplicidad)
-        response = supabase.table("precios_historicos")\
-            .select("nemotecnico, precio_cierre, variacion, fecha")\
-            .order("fecha", desc=True).limit(200).execute()
-        
-        df_raw = pd.DataFrame(response.data)
-        if not df_raw.empty:
-            # ELIMINAR DUPLICADOS: Solo mostramos el registro más reciente por activo [1]
-            df_latest = df_raw.drop_duplicates(subset=['nemotecnico'])
+        # 1. RECUPERACIÓN DE TABLA DE INTEGRIDAD (Auditores de LTM, Chile, BCI)
+        with st.container():
+            st.subheader("🛠️ Auditoría de Integridad: El Polígrafo del Búnker")
+            audit_nemos = ["LTM", "MASISA", "CHILE (I)", "CMPC (I)", "VAPORES (I)", "BCI (I)", "BSANTANDER (I)"]
             
-            # FILTRO ACCIONES PURAS
-            indices = ['IPSA', 'IGPA', 'SPIPSA', 'SPCLX']
-            df_acciones = df_latest[
-                (~df_latest['nemotecnico'].str.contains('CFI', na=False)) & 
-                (~df_latest['nemotecnico'].isin(indices))
-            ].copy()
+            # Consultamos los cierres más recientes de estos nemos específicos
+            res_audit = supabase.table("precios_historicos")\
+                .select("nemotecnico, precio_cierre, variacion, fecha")\
+                .in_("nemotecnico", audit_nemos)\
+                .order("fecha", desc=True).limit(50).execute()
+            
+            if res_audit.data:
+                df_audit = pd.DataFrame(res_audit.data).drop_duplicates(subset=['nemotecnico'])
+                st.write("📈 *Precios de Cierre Oficiales (Base para verificar Renta4/BancoEstado):*")
+                st.dataframe(df_audit.style.format({
+                    "precio_cierre": "$ {:,.2f}",
+                    "variacion": "{:,.2f}%"
+                }), use_container_width=True)
 
-            # TOP 10 ALZAS Y BAJAS (Formato Moneda)
-            c1, c2 = st.columns(2)
-            with c1:
-                st.success("📈 Top 10 Alzas Reales")
-                st.dataframe(df_acciones.nlargest(10, 'variacion')[['nemotecnico', 'precio_cierre', 'variacion']]\
-                             .style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
-            with c2:
-                st.error("📉 Top 10 Bajas Reales")
-                st.dataframe(df_acciones.nsmallest(10, 'variacion')[['nemotecnico', 'precio_cierre', 'variacion']]\
-                             .style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
-
-    elif menu == "📈 Laboratorio de Análisis":
-        st.title("🧪 Laboratorio de Inteligencia Institucional")
+        # 2. RADAR DE ALZAS Y BAJAS (Filtrado Total de CFI e Índices)
+        st.markdown("---")
+        res_raw = supabase.table("precios_historicos").select("nemotecnico, precio_cierre, variacion")\
+            .order("fecha", desc=True).limit(300).execute()
         
+        df_all = pd.DataFrame(res_raw.data).drop_duplicates(subset=['nemotecnico'])
+        
+        # Filtro potente: Solo acciones puras (eliminamos CFI e índices) [3, 4]
+        df_acciones = df_all[
+            (~df_all['nemotecnico'].str.contains('CFI', na=False)) & 
+            (~df_all['nemotecnico'].isin(['IPSA', 'IGPA', 'SPIPSA', 'SPCLX']))
+        ].copy()
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.success("📈 Top 10 Alzas Reales (Acciones)")
+            st.dataframe(df_acciones.nlargest(10, 'variacion')[['nemotecnico', 'precio_cierre', 'variacion']]\
+                         .style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
+        with c2:
+            st.error("📉 Top 10 Bajas Reales (Acciones)")
+            st.dataframe(df_acciones.nsmallest(10, 'variacion')[['nemotecnico', 'precio_cierre', 'variacion']]\
+                         .style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
+
+    elif menu == "🧪 Laboratorio de Análisis":
+        # (Aquí va tu código de Varianza, Volatilidad y Escala Cartográfica v1.9.0)
+        st.title("🧪 Laboratorio de Inteligencia Institucional")
+        # ... [Mantenemos la potencia de los gráficos y estadísticos] ...        
         # SELECTORES DEL LABORATORIO
         activos = st.multiselect("Seleccione Activos para Analizar:", nemo_reales, default=["MASISA", "LTM"])
         driver = st.selectbox("Driver de Escala Cartográfica:", ["Ninguno"] + nemo_reales)
