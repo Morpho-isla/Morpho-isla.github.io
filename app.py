@@ -100,33 +100,41 @@ if login():
             st.dataframe(df_audit.style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}), use_container_width=True)
 
     elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
-        st.title("🧪 Laboratorio: Análisis de Ratio")
-        
-        # 3. SELECTOR BLINDADO: Verifica que los nemos existan en la lista
-        opciones_validas = [n for n in ["MASISA", "SQM-B"] if n in nemo_reales]
-        
-        activos = st.multiselect(
-            "Activos a Analizar:", 
-            options=nemo_reales, 
-            default=opciones_validas if opciones_validas else nemo_reales[:2]
-        )
-        denominador = st.selectbox("Escala Cartográfica (Denominador):", ["Ninguno"] + nemo_reales, index=1) # Default MASISA
+        st.title("🧪 Laboratorio: Análisis de Ratio y Brechas")
+        # ... (mantener carga de datos anterior) ...
 
-        if activos:
-            res = supabase.table("precios_historicos").select("fecha, nemotecnico, precio_cierre")\
-                .in_("nemotecnico", activos + ([denominador] if denominador != "Ninguno" else [])).order("fecha").execute()
-            df_lab = pd.DataFrame(res.data)
-            df_pivot = df_lab.pivot(index='fecha', columns='nemotecnico', values='precio_cierre').ffill()
+        if denominador != "Ninguno" and "SQM-B" in activos:
+            ratio = df_pivot["SQM-B"] / df_pivot[denominador]
+            precio_sqm = df_pivot["SQM-B"]
 
-            # --- RATIO Y BETA TÁCTICO ---
-            if denominador != "Ninguno" and "SQM-B" in activos:
-                ratio = df_pivot["SQM-B"] / df_pivot[denominador]
-                st.metric(f"Ratio SQM-B / {denominador}", f"{ratio.iloc[-1]:,.2f} uds", 
-                          help="Indica cuántas unidades de Masisa se necesitan para comprar 1 SQM-B.")
-                
-                fig = px.line(ratio, title=f"Escala Cartográfica: SQM-B expresado en {denominador}", template="plotly_dark")
-                st.plotly_chart(fig, use_container_width=True)
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
 
+            # Crear subplots con eje Y secundario
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            # LÍNEA 1: El Ratio (Nuestra Lupa de Ratio)
+            fig.add_trace(
+                go.Scatter(x=ratio.index, y=ratio, name=f"Ratio SQM-B / {denominador}", line=dict(color='cyan', width=3)),
+                secondary_y=False,
+            )
+
+            # LÍNEA 2: El Precio Real de SQM-B (El Testigo)
+            fig.add_trace(
+                go.Scatter(x=precio_sqm.index, y=precio_sqm, name="Precio SQM-B ($)", line=dict(color='orange', dash='dash')),
+                secondary_y=True,
+            )
+
+            fig.update_layout(
+                title=f"Auditoría de Brecha: SQM-B vs Ratio {denominador}",
+                template="plotly_dark",
+                hovermode="x unified"
+            )
+            
+            fig.update_yaxes(title_text="<b>Ratio</b> (Unidades)", secondary_y=False)
+            fig.update_yaxes(title_text="<b>Precio</b> ($)", secondary_y=True)
+
+            st.plotly_chart(fig, use_container_width=True)
     elif menu == "📡 Monitor de Drivers":
         st.title("📡 Radar de Indicadores Adelantados")
         # Aquí consultamos la nueva tabla de drivers
