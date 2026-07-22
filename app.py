@@ -100,41 +100,49 @@ if login():
 
     elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
         st.title("🧪 Laboratorio: Análisis de Ratio y Brechas")
-        # ... (mantener carga de datos anterior) ...
+        
+        # 1. CARGA DE NEMOS (Protección de Integridad) [1]
+        try:
+            res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
+            nemo_reales = [d['nemotecnico'] for d in res_nemos.data] if res_nemos.data else []
+        except Exception:
+            nemo_reales = ["MASISA", "SQM-B"]
 
-        if denominador != "Ninguno" and "SQM-B" in activos:
-            ratio = df_pivot["SQM-B"] / df_pivot[denominador]
-            precio_sqm = df_pivot["SQM-B"]
+        # 2. SELECTORES
+        activos = st.multiselect("Activos a Analizar:", nemo_reales, default=[n for n in ["MASISA", "SQM-B"] if n in nemo_reales])
+        denominador = st.selectbox("Escala Cartográfica (Denominador):", ["Ninguno"] + nemo_reales, index=1 if "MASISA" in nemo_reales else 0)
 
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
-
-            # Crear subplots con eje Y secundario
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-            # LÍNEA 1: El Ratio (Nuestra Lupa de Ratio)
-            fig.add_trace(
-                go.Scatter(x=ratio.index, y=ratio, name=f"Ratio SQM-B / {denominador}", line=dict(color='cyan', width=3)),
-                secondary_y=False,
-            )
-
-            # LÍNEA 2: El Precio Real de SQM-B (El Testigo)
-            fig.add_trace(
-                go.Scatter(x=precio_sqm.index, y=precio_sqm, name="Precio SQM-B ($)", line=dict(color='orange', dash='dash')),
-                secondary_y=True,
-            )
-
-            fig.update_layout(
-                title=f"Auditoría de Brecha: SQM-B vs Ratio {denominador}",
-                template="plotly_dark",
-                hovermode="x unified"
-            )
+        # 3. VERIFICACIÓN DE DATOS (El cerrojo de seguridad)
+        if activos and denominador != "Ninguno":
+            res = supabase.table("precios_historicos").select("fecha, nemotecnico, precio_cierre")\
+                .in_("nemotecnico", activos + [denominador]).order("fecha").execute()
             
-            fig.update_yaxes(title_text="<b>Ratio</b> (Unidades)", secondary_y=False)
-            fig.update_yaxes(title_text="<b>Precio</b> ($)", secondary_y=True)
+            if res.data:
+                df_lab = pd.DataFrame(res.data)
+                df_pivot = df_lab.pivot(index='fecha', columns='nemotecnico', values='precio_cierre').ffill()
 
-            st.plotly_chart(fig, use_container_width=True)
-    elif menu == "📡 Monitor de Drivers":
+                # --- LÍNEA 105 BLINDADA: Verificamos que las columnas existan en el DataFrame ---
+                if "SQM-B" in df_pivot.columns and denominador in df_pivot.columns:
+                    ratio = df_pivot["SQM-B"] / df_pivot[denominador]
+                    precio_sqm = df_pivot["SQM-B"]
+
+                    # DESPLIEGUE DEL OSCILOSCOPIO (Tu idea de ver 'quién provoca el salto')
+                    import plotly.graph_objects as go
+                    from plotly.subplots import make_subplots
+
+                    fig = make_subplots(specs=[[{"secondary_y": True}]])
+                    
+                    # Línea del Ratio (Lupa Informativa)
+                    fig.add_trace(go.Scatter(x=ratio.index, y=ratio, name=f"Ratio SQM-B/{denominador}", line=dict(color='cyan', width=3)), secondary_y=False)
+                    
+                    # Línea del Precio (Testigo de Verdad)
+                    fig.add_trace(go.Scatter(x=precio_sqm.index, y=precio_sqm, name="Precio SQM-B ($)", line=dict(color='orange', dash='dash')), secondary_y=True)
+
+                    fig.update_layout(title="Auditoría de Brecha: SQM-B vs Ratio", template="plotly_dark")
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning(f"Esperando datos de {denominador} o SQM-B para calcular la brecha...")
+                elif menu == "📡 Monitor de Drivers":
         st.title("📡 Radar de Indicadores Adelantados")
         # Aquí consultamos la nueva tabla de drivers
         res_drivers = supabase.table("drivers_historicos").select("*").order("fecha", desc=True).limit(10).execute()
