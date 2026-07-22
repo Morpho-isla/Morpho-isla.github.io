@@ -44,7 +44,16 @@ def get_and_save_drivers():
 
 # 2. BLOQUE PRINCIPAL (Verifica la indentación)
 if login():
+    # 1. CARGA DE DRIVERS (Macro)
     drivers_data = get_and_save_drivers()
+    
+    # 2. CARGA DE NEMOTÉCNICOS (IPSA-29) - Blindado e independiente
+    try:
+        res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
+        nemo_reales = [d['nemotecnico'] for d in res_nemos.data] if res_nemos.data else []
+    except Exception as e:
+        st.error(f"Error cargando activos del IPSA: {e}")
+        nemo_reales = ["MASISA", "SQM-B", "LTM"] # Fallback de emergencia
     
     # --- CABECERA ESTRATÉGICA CON BLINDAJE TOTAL ---
     if drivers_data:
@@ -71,7 +80,7 @@ if login():
         ipc = drivers_data.get('ipc', {})
         ipc_val = ipc.get('value', 'N/A')
         c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")
-    
+        Pass
     # El resto del menú sigue aquí abajo (todo indentado)
     st.sidebar.markdown("---")
     # ... resto del código ...
@@ -90,12 +99,17 @@ if login():
             df_audit = pd.DataFrame(res_audit.data).drop_duplicates(subset=['nemotecnico'])
             st.dataframe(df_audit.style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}), use_container_width=True)
 
-    elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
-        st.title("🧪 Laboratorio: Análisis de Ratio y Brechas")
-        st.info("Variable Control: MASISA vs SQM-B (Efecto Lupa)")
+        elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
+        st.title("🧪 Laboratorio: Análisis de Ratio")
         
-        # Selector dinámico
-        activos = st.multiselect("Activos a Analizar:", nemo_reales, default=["MASISA", "SQM-B"])
+        # 3. SELECTOR BLINDADO: Verifica que los nemos existan en la lista
+        opciones_validas = [n for n in ["MASISA", "SQM-B"] if n in nemo_reales]
+        
+        activos = st.multiselect(
+            "Activos a Analizar:", 
+            options=nemo_reales, 
+            default=opciones_validas if opciones_validas else nemo_reales[:2]
+        )
         denominador = st.selectbox("Escala Cartográfica (Denominador):", ["Ninguno"] + nemo_reales, index=1) # Default MASISA
 
         if activos:
