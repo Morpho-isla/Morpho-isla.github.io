@@ -1,17 +1,17 @@
 import streamlit as st
-from supabase import create_client, Client
 import pandas as pd
 import plotly.express as px
-import numpy as np
 import requests
+from supabase import create_client, Client
+from datetime import datetime
 
-# 1. CONFIGURACIÓN Y CONEXIÓN
-st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v1.9.3")
+# 1. CONFIGURACIÓN DE ALTO NIVEL
+st.set_page_config(layout="wide", page_title="Terminal IPSA-29 v2.0")
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
-# 2. FUNCIÓN DE SEGURIDAD (LOGIN)
+# 2. SISTEMA DE ACCESO (Login persistente)
 def login():
     st.sidebar.title("🔐 Acceso Analista Senior")
     user = st.sidebar.text_input("Usuario", key="user_login")
@@ -20,98 +20,90 @@ def login():
         return True
     return False
 
-# 3. FUNCIÓN TÁCTICA: CAPTURA DE DRIVERS MACRO
-def fetch_macro_drivers():
+# 3. MOTOR DE AUTOMATIZACIÓN: DRIVERS MACRO (Real-Time API)
+def get_and_save_drivers():
+    """Captura datos de Boostr y los guarda en la nueva tabla drivers_historicos"""
     try:
-        # Aquí integramos los datos de Boostr y Cochilco de tus fuentes [1, 2]
-        return {
-            "USD": 928.99, "USD_VAR": -0.72,
-            "UF": 40844.79, "COBRE": 6.08, "IPER_VAR": 0.83
-        }
-    except: return None
+        # 1. Llamada real a la API de Boostr [1, 2]
+        url_boostr = "https://api.boostr.cl/economy/indicators.json"
+        response = requests.get(url_boostr)
+        data = response.json()['data']
+        
+        # 2. Extracción de valores clave
+        usd_val = data['dolar']['value']
+        uf_val = data['uf']['value']
+        fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+
+        # 3. ZARPAZO TÁCTICO: Persistencia en Supabase
+        # Guardamos el Dólar Observado
+        supabase.table("drivers_historicos").upsert({
+            "fecha": fecha_hoy, "driver_nemo": "USD_OBS", "valor": usd_val
+        }).execute()
+        
+        return data
+    except Exception as e:
+        st.sidebar.error(f"Pestañeo en API Boostr: {e}")
+        return None
 
 if login():
-    # --- EL ZARPAZO: OBTENCIÓN DE NEMOS ÚNICOS (TU DUDA) ---
-    # Esto asegura integridad total desde A hasta Z [Conversación previa]
+    # --- PROCESAMIENTO DE DATOS ---
+    drivers_data = get_and_save_drivers()
     res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
     nemo_reales = [d['nemotecnico'] for d in res_nemos.data]
 
-    # --- CABECERA MACROESTRATÉGICA ---
-    macro = fetch_macro_drivers()
-    if macro:
+    # --- CABECERA ESTRATÉGICA (Contexto Global) ---
+    if drivers_data:
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("💵 Dólar Obs.", f"${macro['USD']}", f"{macro['USD_VAR']}%")
-        c2.metric("🏠 UF Hoy", f"${macro['UF']:,.2f}")
-        c3.metric("🥉 Cobre (lb)", f"US$ {macro['COBRE']}", "Alta Frecuencia")
-        c4.metric("📈 IPER (Export)", "Ciclo IMACEC", f"+{macro['IPER_VAR']}%")
+        c1.metric("💵 Dólar Obs.", f"${drivers_data['dolar']['value']}", f"{drivers_data['dolar']['variation']}%")
+        c2.metric("🏠 UF Hoy", f"${drivers_data['uf']['value']:,.2f}")
+        c3.metric("Petróleo WTI", f"US$ {drivers_data['wti']['value']}", f"{drivers_data['wti']['variation']}%")
+        c4.metric("📈 IPC", f"{drivers_data['ipc']['value']}%", "Mensual")
 
     st.sidebar.markdown("---")
-    menu = st.sidebar.radio("📋 MENÚ TÁCTICO", 
-                            ["🚨 Radar de Emergencia", "🧪 Laboratorio de Análisis", "📡 Monitor de Drivers"])
+    menu = st.sidebar.radio("📋 MENÚ DE COMANDO", 
+                            ["🚨 Radar de Verdad", "🧪 Laboratorio (Masisa/SQM-B)", "📡 Monitor de Drivers"])
 
-    if menu == "🚨 Radar de Emergencia":
+    if menu == "🚨 Radar de Verdad":
         st.title("🚀 Radar de Contingencia y Verdad")
+        # Aquí recuperamos tu "Polígrafo" de integridad [17, Conversación previa]
+        audit_nemos = ["LTM", "MASISA", "CHILE (I)", "CMPC (I)", "SQM-B"]
+        res_audit = supabase.table("precios_historicos").select("nemotecnico, precio_cierre, variacion, fecha")\
+            .in_("nemotecnico", audit_nemos).order("fecha", desc=True).limit(50).execute()
         
-        # TABLA DE INTEGRIDAD (POLÍGRAFO)
-        with st.expander("🛠️ Auditoría de Integridad: Precios de Cierre Oficiales"):
-            audit_nemos = ["LTM", "MASISA", "CHILE (I)", "CMPC (I)", "VAPORES (I)", "BCI (I)"]
-            res_audit = supabase.table("precios_historicos").select("nemotecnico, precio_cierre, variacion, fecha")\
-                .in_("nemotecnico", audit_nemos).order("fecha", desc=True).limit(50).execute()
-            if res_audit.data:
-                df_audit = pd.DataFrame(res_audit.data).drop_duplicates(subset=['nemotecnico'])
-                st.dataframe(df_audit.style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
+        if res_audit.data:
+            st.subheader("🛠️ Auditoría de Cierres Oficiales")
+            df_audit = pd.DataFrame(res_audit.data).drop_duplicates(subset=['nemotecnico'])
+            st.dataframe(df_audit.style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}), use_container_width=True)
 
-        # TOP 10 ALZAS Y BAJAS (Filtrado Sin CFI) [3]
-        res_raw = supabase.table("precios_historicos").select("nemotecnico, precio_cierre, variacion")\
-            .order("fecha", desc=True).limit(300).execute()
-        df_all = pd.DataFrame(res_raw.data).drop_duplicates(subset=['nemotecnico'])
-        df_acciones = df_all[(~df_all['nemotecnico'].str.contains('CFI', na=False)) & 
-                             (~df_all['nemotecnico'].isin(['IPSA', 'IGPA', 'SPIPSA']))].copy()
+    elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
+        st.title("🧪 Laboratorio: Análisis de Ratio y Brechas")
+        st.info("Variable Control: MASISA vs SQM-B (Efecto Lupa)")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.success("📈 Mayores Alzas (Acciones)")
-            st.dataframe(df_acciones.nlargest(10, 'variacion')[['nemotecnico', 'precio_cierre', 'variacion']]\
-                         .style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
-        with col2:
-            st.error("📉 Mayores Bajas (Acciones)")
-            st.dataframe(df_acciones.nsmallest(10, 'variacion')[['nemotecnico', 'precio_cierre', 'variacion']]\
-                         .style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}))
-
-    elif menu == "🧪 Laboratorio de Análisis":
-        st.title("🧪 Laboratorio de Inteligencia Institucional")
-        activos = st.multiselect("Activos a Correlacionar:", nemo_reales, default=["MASISA", "LTM"])
-        driver = st.selectbox("Denominador (Escala Cartográfica):", ["Ninguno"] + nemo_reales)
+        # Selector dinámico
+        activos = st.multiselect("Activos a Analizar:", nemo_reales, default=["MASISA", "SQM-B"])
+        denominador = st.selectbox("Escala Cartográfica (Denominador):", ["Ninguno"] + nemo_reales, index=1) # Default MASISA
 
         if activos:
-            q_list = activos + ([driver] if driver != "Ninguno" else [])
             res = supabase.table("precios_historicos").select("fecha, nemotecnico, precio_cierre")\
-                .in_("nemotecnico", q_list).order("fecha", desc=False).execute()
+                .in_("nemotecnico", activos + ([denominador] if denominador != "Ninguno" else [])).order("fecha").execute()
             df_lab = pd.DataFrame(res.data)
-            df_lab['fecha'] = pd.to_datetime(df_lab['fecha'])
-            df_lab['precio_cierre'] = df_lab.groupby('nemotecnico')['precio_cierre'].ffill()
-            df_pivot = df_lab.pivot(index='fecha', columns='nemotecnico', values='precio_cierre')
+            df_pivot = df_lab.pivot(index='fecha', columns='nemotecnico', values='precio_cierre').ffill()
 
-            # ESTADÍSTICOS DE RIESGO
-            returns = df_pivot[activos].pct_change().dropna()
-            if not returns.empty:
-                st.markdown("### 📊 Varianza y Riesgo")
-                stats = pd.DataFrame({"Varianza": returns.var(), "Volatilidad": returns.std(), 
-                                      "Retorno Total": (returns + 1).prod() - 1}).T
-                st.dataframe(stats.style.format("{:.2%}"), use_container_width=True)
-
-            # GRÁFICO CON ZOOM (RANGE SLIDER)
-            if driver != "Ninguno":
-                fig = px.line(df_pivot[activos].div(df_pivot[driver], axis=0), template="plotly_dark")
-            else:
-                fig = px.line(df_pivot[activos], template="plotly_dark")
-            fig.update_layout(xaxis=dict(rangeslider=dict(visible=True)))
-            st.plotly_chart(fig, use_container_width=True)
+            # --- RATIO Y BETA TÁCTICO ---
+            if denominador != "Ninguno" and "SQM-B" in activos:
+                ratio = df_pivot["SQM-B"] / df_pivot[denominador]
+                st.metric(f"Ratio SQM-B / {denominador}", f"{ratio.iloc[-1]:,.2f} uds", 
+                          help="Indica cuántas unidades de Masisa se necesitan para comprar 1 SQM-B.")
+                
+                fig = px.line(ratio, title=f"Escala Cartográfica: SQM-B expresado en {denominador}", template="plotly_dark")
+                st.plotly_chart(fig, use_container_width=True)
 
     elif menu == "📡 Monitor de Drivers":
         st.title("📡 Radar de Indicadores Adelantados")
-        st.write("Conectando con el Banco Central (IPER) para anticipar IMACEC.")
-        st.warning("Estrategia IPER activa: Correlación 0.74 con actividad económica a 3 meses [4].")
+        # Aquí consultamos la nueva tabla de drivers
+        res_drivers = supabase.table("drivers_historicos").select("*").order("fecha", desc=True).limit(10).execute()
+        st.write("### Historial de Drivers (Captura Autónoma)")
+        st.table(pd.DataFrame(res_drivers.data))
 
 else:
-    st.info("🔒 Ingrese credenciales para activar la Terminal IPSA-29.")
+    st.info("🔒 Ingrese credenciales para activar la Terminal IPSA-29 v2.0.")
