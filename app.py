@@ -142,7 +142,7 @@ if login():
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning(f"Esperando datos de {denominador} o SQM-B para calcular la brecha...")
-                elif menu == "📡 Monitor de Drivers":
+        elif menu == "📡 Monitor de Drivers":
         st.title("📡 Radar de Indicadores Adelantados")
         # Aquí consultamos la nueva tabla de drivers
         res_drivers = supabase.table("drivers_historicos").select("*").order("fecha", desc=True).limit(10).execute()
