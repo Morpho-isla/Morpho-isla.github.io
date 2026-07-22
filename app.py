@@ -46,18 +46,31 @@ def get_and_save_drivers():
 if login():
     drivers_data = get_and_save_drivers()
     
-    # --- CABECERA ESTRATÉGICA (Debe estar DENTRO del if login) ---
+    # --- CABECERA ESTRATÉGICA CON BLINDAJE TOTAL ---
     if drivers_data:
         c1, c2, c3, c4 = st.columns(4)
         
-        # Blindaje con .get() para la variación
-        usd_val = drivers_data['dolar']['value']
-        usd_var = drivers_data['dolar'].get('variation', '0.00')
+        # 1. Dólar: Defensivo ante falta de clave o variación
+        usd = drivers_data.get('dolar', {})
+        usd_val = usd.get('value', 'N/A')
+        usd_var = usd.get('variation', '0.00')
         c1.metric("💵 Dólar Obs.", f"${usd_val}", f"{usd_var}%")
         
-        c2.metric("🏠 UF Hoy", f"${drivers_data['uf']['value']:,.2f}")
-        c3.metric("Petróleo WTI", f"US$ {drivers_data['wti']['value']}", f"{drivers_data['wti'].get('variation', '0.00')}%")
-        c4.metric("📈 IPC", f"{drivers_data['ipc']['value']}%", "Mensual")
+        # 2. UF: Defensivo
+        uf = drivers_data.get('uf', {})
+        uf_val = uf.get('value', 0)
+        c2.metric("🏠 UF Hoy", f"${uf_val:,.2f}")
+        
+        # 3. Petróleo WTI: El punto de colapso actual
+        wti = drivers_data.get('wti', {}) # Si no existe 'wti', devuelve un dict vacío
+        wti_val = wti.get('value', 'N/A')
+        wti_var = wti.get('variation', '0.00')
+        c3.metric("Petróleo WTI", f"US$ {wti_val}", f"{wti_var}%")
+        
+        # 4. IPC: Defensivo
+        ipc = drivers_data.get('ipc', {})
+        ipc_val = ipc.get('value', 'N/A')
+        c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")
     
     # El resto del menú sigue aquí abajo (todo indentado)
     st.sidebar.markdown("---")
