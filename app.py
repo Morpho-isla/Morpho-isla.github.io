@@ -99,7 +99,7 @@ if login():
             df_audit = pd.DataFrame(res_audit.data).drop_duplicates(subset=['nemotecnico'])
             st.dataframe(df_audit.style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}), use_container_width=True)
 
-        elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
+    elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
         st.title("🧪 Laboratorio: Análisis de Ratio")
         
         # 3. SELECTOR BLINDADO: Verifica que los nemos existan en la lista
