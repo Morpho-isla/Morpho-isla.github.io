@@ -55,32 +55,31 @@ if login():
         st.error(f"Error cargando activos del IPSA: {e}")
         nemo_reales = ["MASISA", "SQM-B", "LTM"] # Fallback de emergencia
     
-    # --- CABECERA ESTRATÉGICA CON BLINDAJE TOTAL ---
+    # --- CABECERA ESTRATÉGICA: BLINDAJE DE SEGUNDO GRADO ---
     if drivers_data:
         c1, c2, c3, c4 = st.columns(4)
         
-        # 1. Dólar: Defensivo ante falta de clave o variación
-        usd = drivers_data.get('dolar', {})
+        # 1. DÓLAR: Si la clave existe pero es None, 'or {}' lo convierte en dict vacío
+        usd = drivers_data.get('dolar') or {} 
         usd_val = usd.get('value', 'N/A')
         usd_var = usd.get('variation', '0.00')
         c1.metric("💵 Dólar Obs.", f"${usd_val}", f"{usd_var}%")
         
-        # 2. UF: Defensivo
-        uf = drivers_data.get('uf', {})
+        # 2. UF: Aplicamos la misma lógica de seguridad
+        uf = drivers_data.get('uf') or {}
         uf_val = uf.get('value', 0)
         c2.metric("🏠 UF Hoy", f"${uf_val:,.2f}")
         
-        # 3. Petróleo WTI: El punto de colapso actual
-        wti = drivers_data.get('wti', {}) # Si no existe 'wti', devuelve un dict vacío
+        # 3. PETRÓLEO WTI: Ya vimos en la Captura menu1 que este puede fallar
+        wti = drivers_data.get('wti') or {}
         wti_val = wti.get('value', 'N/A')
         wti_var = wti.get('variation', '0.00')
         c3.metric("Petróleo WTI", f"US$ {wti_val}", f"{wti_var}%")
         
-        # 4. IPC: Defensivo
-        ipc = drivers_data.get('ipc', {})
+        # 4. IPC
+        ipc = drivers_data.get('ipc') or {}
         ipc_val = ipc.get('value', 'N/A')
-        c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")
-        
+        c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")        
     # El resto del menú sigue aquí abajo (todo indentado)
     st.sidebar.markdown("---")
     # ... resto del código ...
