@@ -80,7 +80,7 @@ if login():
         ipc = drivers_data.get('ipc', {})
         ipc_val = ipc.get('value', 'N/A')
         c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")
-        Pass
+        
     # El resto del menú sigue aquí abajo (todo indentado)
     st.sidebar.markdown("---")
     # ... resto del código ...
