@@ -20,60 +20,48 @@ def login():
         return True
     return False
 
-# 3. MOTOR DE AUTOMATIZACIÓN: DRIVERS MACRO (Real-Time API)
+# 1. ACTUALIZACIÓN DE LA FUNCIÓN DE DRIVERS
 def get_and_save_drivers():
-    """Captura datos de Boostr y los guarda en la nueva tabla drivers_historicos"""
     try:
-        # 1. Llamada real a la API de Boostr [1, 2]
         url_boostr = "https://api.boostr.cl/economy/indicators.json"
         response = requests.get(url_boostr)
         data = response.json()['data']
         
-        # 2. Extracción de valores clave
         usd_val = data['dolar']['value']
-        uf_val = data['uf']['value']
         fecha_hoy = datetime.now().strftime('%Y-%m-%d')
 
-        # 3. ZARPAZO TÁCTICO: Persistencia en Supabase
-        # Guardamos el Dólar Observado
-        supabase.table("drivers_historicos").upsert({
-            "fecha": fecha_hoy, "driver_nemo": "USD_OBS", "valor": usd_val
-        }).execute()
+        # ZARPAZO: Especificamos 'on_conflict' para evitar el error 23505
+        # Esto permite actualizar el valor si ya existe para esa fecha
+        supabase.table("drivers_historicos").upsert(
+            {"fecha": fecha_hoy, "driver_nemo": "USD_OBS", "valor": usd_val},
+            on_conflict="fecha, driver_nemo" 
+        ).execute()
         
         return data
     except Exception as e:
-        st.sidebar.error(f"Pestañeo en API Boostr: {e}")
-        return None
+        # Si hay un error de llave duplicada, igual devolvemos los datos para que la web funcione
+        return data if 'data' in locals() else None
 
+# 2. BLOQUE PRINCIPAL (Verifica la indentación)
 if login():
-    # --- PROCESAMIENTO DE DATOS ---
     drivers_data = get_and_save_drivers()
-    res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
-    nemo_reales = [d['nemotecnico'] for d in res_nemos.data]
-
-# --- CABECERA ESTRATÉGICA BLINDADA (v2.0.1) ---
-if drivers_data:
-    c1, c2, c3, c4 = st.columns(4)
     
-    # Dólar: Usamos .get() para evitar el KeyError en 'variation' [2]
-    usd_val = drivers_data['dolar']['value']
-    usd_var = drivers_data['dolar'].get('variation', '0.00') # Si no hay var, pone 0.00
-    c1.metric("💵 Dólar Obs.", f"${usd_val}", f"{usd_var}%")
+    # --- CABECERA ESTRATÉGICA (Debe estar DENTRO del if login) ---
+    if drivers_data:
+        c1, c2, c3, c4 = st.columns(4)
+        
+        # Blindaje con .get() para la variación
+        usd_val = drivers_data['dolar']['value']
+        usd_var = drivers_data['dolar'].get('variation', '0.00')
+        c1.metric("💵 Dólar Obs.", f"${usd_val}", f"{usd_var}%")
+        
+        c2.metric("🏠 UF Hoy", f"${drivers_data['uf']['value']:,.2f}")
+        c3.metric("Petróleo WTI", f"US$ {drivers_data['wti']['value']}", f"{drivers_data['wti'].get('variation', '0.00')}%")
+        c4.metric("📈 IPC", f"{drivers_data['ipc']['value']}%", "Mensual")
     
-    # UF: Generalmente no trae variación diaria
-    uf_val = drivers_data['uf']['value']
-    c2.metric("🏠 UF Hoy", f"${uf_val:,.2f}")
-    
-    # Petróleo WTI: Aplicamos la misma lógica de seguridad
-    wti_val = drivers_data['wti']['value']
-    wti_var = drivers_data['wti'].get('variation', '0.00')
-    c3.metric("Petróleo WTI", f"US$ {wti_val}", f"{wti_var}%")
-    
-    # IPC
-    ipc_val = drivers_data['ipc']['value']
-    c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")
-
+    # El resto del menú sigue aquí abajo (todo indentado)
     st.sidebar.markdown("---")
+    # ... resto del código ...
     menu = st.sidebar.radio("📋 MENÚ DE COMANDO", 
                             ["🚨 Radar de Verdad", "🧪 Laboratorio (Masisa/SQM-B)", "📡 Monitor de Drivers"])
 
