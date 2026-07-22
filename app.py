@@ -51,13 +51,27 @@ if login():
     res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
     nemo_reales = [d['nemotecnico'] for d in res_nemos.data]
 
-    # --- CABECERA ESTRATÉGICA (Contexto Global) ---
-    if drivers_data:
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("💵 Dólar Obs.", f"${drivers_data['dolar']['value']}", f"{drivers_data['dolar']['variation']}%")
-        c2.metric("🏠 UF Hoy", f"${drivers_data['uf']['value']:,.2f}")
-        c3.metric("Petróleo WTI", f"US$ {drivers_data['wti']['value']}", f"{drivers_data['wti']['variation']}%")
-        c4.metric("📈 IPC", f"{drivers_data['ipc']['value']}%", "Mensual")
+# --- CABECERA ESTRATÉGICA BLINDADA (v2.0.1) ---
+if drivers_data:
+    c1, c2, c3, c4 = st.columns(4)
+    
+    # Dólar: Usamos .get() para evitar el KeyError en 'variation' [2]
+    usd_val = drivers_data['dolar']['value']
+    usd_var = drivers_data['dolar'].get('variation', '0.00') # Si no hay var, pone 0.00
+    c1.metric("💵 Dólar Obs.", f"${usd_val}", f"{usd_var}%")
+    
+    # UF: Generalmente no trae variación diaria
+    uf_val = drivers_data['uf']['value']
+    c2.metric("🏠 UF Hoy", f"${uf_val:,.2f}")
+    
+    # Petróleo WTI: Aplicamos la misma lógica de seguridad
+    wti_val = drivers_data['wti']['value']
+    wti_var = drivers_data['wti'].get('variation', '0.00')
+    c3.metric("Petróleo WTI", f"US$ {wti_val}", f"{wti_var}%")
+    
+    # IPC
+    ipc_val = drivers_data['ipc']['value']
+    c4.metric("📈 IPC", f"{ipc_val}%", "Mensual")
 
     st.sidebar.markdown("---")
     menu = st.sidebar.radio("📋 MENÚ DE COMANDO", 
