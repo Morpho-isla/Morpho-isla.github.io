@@ -98,48 +98,65 @@ if login():
             df_audit = pd.DataFrame(res_audit.data).drop_duplicates(subset=['nemotecnico'])
             st.dataframe(df_audit.style.format({"precio_cierre": "$ {:,.2f}", "variacion": "{:,.2f}%"}), use_container_width=True)
 
+
     elif menu == "🧪 Laboratorio (Masisa/SQM-B)":
-        st.title("🧪 Laboratorio: Análisis de Ratio y Brechas")
+        st.title("🧪 Laboratorio de Correlación Macro")
         
-        # 1. CARGA DE NEMOS (Protección de Integridad) [1]
-        try:
-            res_nemos = supabase.table("vista_nemos_unicos").select("*").execute()
-            nemo_reales = [d['nemotecnico'] for d in res_nemos.data] if res_nemos.data else []
-        except Exception:
-            nemo_reales = ["MASISA", "SQM-B"]
+        # 1. CARGA DE COMBUSTIBLE (Nemos y Drivers)
+        res_nemos = supabase.table("vista_nemos_unicos").select("nemotecnico").execute()
+        nemo_reales = [d['nemotecnico'] for d in res_nemos.data]
+        
+        res_drivers = supabase.table("drivers_historicos").select("driver_nemo").execute()
+        drivers_list = list(set([d['driver_nemo'] for d in res_drivers.data]))
 
-        # 2. SELECTORES
-        activos = st.multiselect("Activos a Analizar:", nemo_reales, default=[n for n in ["MASISA", "SQM-B"] if n in nemo_reales])
-        denominador = st.selectbox("Escala Cartográfica (Denominador):", ["Ninguno"] + nemo_reales, index=1 if "MASISA" in nemo_reales else 0)
+        col1, col2 = st.columns(2)
+        with col1:
+            activo_foco = st.selectbox("Activo Principal:", nemo_reales, index=nemo_reales.index("SQM-B") if "SQM-B" in nemo_reales else 0)
+        with col2:
+            tipo_analisis = st.radio("Tipo de Comparativa:", ["Escala Cartográfica (Ratio)", "Correlación Macro (Driver)"])
 
-        # 3. VERIFICACIÓN DE DATOS (El cerrojo de seguridad)
-        if activos and denominador != "Ninguno":
-            res = supabase.table("precios_historicos").select("fecha, nemotecnico, precio_cierre")\
-                .in_("nemotecnico", activos + [denominador]).order("fecha").execute()
+        # 2. SELECTOR DINÁMICO
+        if tipo_analisis == "Escala Cartográfica (Ratio)":
+            denominador = st.selectbox("Dividido por (Denominador):", ["Ninguno"] + nemo_reales, index=1 if "MASISA" in nemo_reales else 0)
+        else:
+            denominador = st.selectbox("Driver de Referencia:", drivers_list, index=drivers_list.index("WTI") if "WTI" in drivers_list else 0)
+
+        # 3. PROCESAMIENTO DEL OSCILOSCOPIO
+        if denominador != "Ninguno":
+            # Obtener Precios
+            res_p = supabase.table("precios_historicos").select("fecha, precio_cierre").eq("nemotecnico", activo_foco).order("fecha").execute()
+            df_p = pd.DataFrame(res_p.data).set_index('fecha')
+
+            if tipo_analisis == "Escala Cartográfica (Ratio)":
+                res_d = supabase.table("precios_historicos").select("fecha, precio_cierre").eq("nemotecnico", denominador).order("fecha").execute()
+                label_y2 = f"Ratio {activo_foco}/{denominador}"
+            else:
+                res_d = supabase.table("drivers_historicos").select("fecha, valor").eq("driver_nemo", denominador).order("fecha").execute()
+                label_y2 = f"Valor {denominador} (US$)"
             
-            if res.data:
-                df_lab = pd.DataFrame(res.data)
-                df_pivot = df_lab.pivot(index='fecha', columns='nemotecnico', values='precio_cierre').ffill()
+            df_d = pd.DataFrame(res_d.data).set_index('fecha')
+            
+            # Unir y graficar
+            df_final = df_p.join(df_d, how='inner', lsuffix='_p', rsuffix='_d').ffill()
+            
+            if not df_final.empty:
+                import plotly.graph_objects as go
+                from plotly.subplots import make_subplots
 
-                # --- LÍNEA 105 BLINDADA: Verificamos que las columnas existan en el DataFrame ---
-                if "SQM-B" in df_pivot.columns and denominador in df_pivot.columns:
-                    ratio = df_pivot["SQM-B"] / df_pivot[denominador]
-                    precio_sqm = df_pivot["SQM-B"]
+                fig = make_subplots(specs=[[{"secondary_y": True}]])
+                
+                # Eje Y1: El Activo (SQM-B)
+                fig.add_trace(go.Scatter(x=df_final.index, y=df_final.iloc[:, 0], name=f"Precio {activo_foco} ($)", line=dict(color='orange', width=3)), secondary_y=False)
+                
+                # Eje Y2: El Driver o el Ratio
+                y2_values = (df_final.iloc[:, 0] / df_final.iloc[:, 1]) if tipo_analisis == "Escala Cartográfica (Ratio)" else df_final.iloc[:, 1]
+                fig.add_trace(go.Scatter(x=df_final.index, y=y2_values, name=label_y2, line=dict(color='cyan', dash='dash')), secondary_y=True)
 
-                    # DESPLIEGUE DEL OSCILOSCOPIO (Tu idea de ver 'quién provoca el salto')
-                    import plotly.graph_objects as go
-                    from plotly.subplots import make_subplots
-
-                    fig = make_subplots(specs=[[{"secondary_y": True}]])
-                    
-                    # Línea del Ratio (Lupa Informativa)
-                    fig.add_trace(go.Scatter(x=ratio.index, y=ratio, name=f"Ratio SQM-B/{denominador}", line=dict(color='cyan', width=3)), secondary_y=False)
-                    
-                    # Línea del Precio (Testigo de Verdad)
-                    fig.add_trace(go.Scatter(x=precio_sqm.index, y=precio_sqm, name="Precio SQM-B ($)", line=dict(color='orange', dash='dash')), secondary_y=True)
-
-                    fig.update_layout(title="Auditoría de Brecha: SQM-B vs Ratio", template="plotly_dark")
-                    st.plotly_chart(fig, use_container_width=True)
+                fig.update_layout(title=f"Auditoría: {activo_foco} vs {denominador}", template="plotly_dark", hovermode="x unified")
+                fig.update_yaxes(title_text="<b>Precio Activo</b> ($)", secondary_y=False)
+                fig.update_yaxes(title_text=f"<b>{label_y2}</b>", secondary_y=True)
+                
+                st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.warning(f"Esperando datos de {denominador} o SQM-B para calcular la brecha...")
     elif menu == "📡 Monitor de Drivers":
