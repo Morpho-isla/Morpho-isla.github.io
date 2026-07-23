@@ -41,6 +41,53 @@ def get_and_save_drivers():
     except Exception as e:
         # Si hay un error de llave duplicada, igual devolvemos los datos para que la web funcione
         return data if 'data' in locals() else None
+def backfill_drivers_2026():
+    # 2. Consulta masiva al historial del año 2026
+    api_url = "https://api.boostr.cl/economy/indicators/2026.json"
+    
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        full_data = response.json().get('data', {})
+        
+        # 3. Procesamos cada indicador (Dólar, UF, etc.)
+        for indicador, registros in full_data.items():
+            # Filtramos solo los registros de junio (06) y julio (07)
+            for reg in registros:
+                fecha = reg.get('date') # Formato 'YYYY-MM-DD'
+                mes = fecha.split('-')[2]
+                
+                if mes in ['06', '07']:
+                    # Mapeo de nombres para nuestra tabla drivers_historicos
+                    nemo_map = {
+                        'dolar': 'USD_OBS',
+                        'uf': 'UF',
+                        'utm': 'UTM',
+                        'ipc': 'IPC'
+                    }
+                    
+                    driver_nemo = nemo_map.get(indicador)
+                    if driver_nemo:
+                        valor = reg.get('value')
+                        
+                        # 4. Inserción en Supabase con blindaje on_conflict
+                        data_insert = {
+                            "fecha": fecha,
+                            "driver_nemo": driver_nemo,
+                            "valor": float(valor)
+                        }
+                        
+                        supabase.table("drivers_historicos").upsert(
+                            data_insert, on_conflict="fecha, driver_nemo"
+                        ).execute()
+        
+        print("✅ Backfill de junio y julio completado con éxito.")
+        
+    except Exception as e:
+        print(f"❌ Error en la captura masiva: {e}")
+
+if __name__ == "__main__":
+    backfill_drivers_2026()
 
 # 2. BLOQUE PRINCIPAL (Verifica la indentación)
 if login():
