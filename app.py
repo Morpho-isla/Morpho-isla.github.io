@@ -157,8 +157,8 @@ if login():
                 fig.update_yaxes(title_text=f"<b>{label_y2}</b>", secondary_y=True)
                 
                 st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.warning(f"Esperando datos de {denominador} o SQM-B para calcular la brecha...")
+            else:
+                st.warning(f"Esperando datos de {denominador} o SQM-B para calcular la brecha...")
     elif menu == "📡 Monitor de Drivers":
         st.title("📡 Radar de Indicadores Adelantados")
         # Aquí consultamos la nueva tabla de drivers
